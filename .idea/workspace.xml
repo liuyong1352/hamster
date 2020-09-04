@@ -2,14 +2,18 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="6fdc3f9e-7243-4daa-b920-6480f9da49c3" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/compiler.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/hamster.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/io/hamster/raft/storage/log/Test.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/proto/protocols/raft/log.proto" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/io/hamster/storage/StorageException.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/io/hamster/storage/journal/Indexed.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/io/hamster/storage/journal/JournalSegment.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/io/hamster/storage/journal/JournalSegmentFile.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/io/hamster/storage/journal/JournalWriter.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/io/hamster/storage/journal/MappableJournalSegmentWriter.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/io/hamster/storage/journal/MappedJournalSegmentWriter.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/test/java/io/hamster/storage/journal/JournalSegmentFileTest.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/test/java/io/hamster/storage/journal/Test.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/hamster/raft/storage/log/Test.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/io/hamster/raft/storage/log/Test.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -57,15 +61,18 @@
     <property name="project.structure.side.proportion" value="0.0" />
   </component>
   <component name="RecentsManager">
-    <key name="CopyFile.RECENT_KEYS">
-      <recent name="D:\raft\hamster" />
-    </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="D:\raft\hamster\src\main\proto\protocols" />
       <recent name="D:\raft\hamster\src\main\proto" />
     </key>
+    <key name="CopyClassDialog.RECENTS_KEY">
+      <recent name="io.hamster.storage.journal" />
+    </key>
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="D:\raft\hamster" />
+    </key>
   </component>
-  <component name="RunManager">
+  <component name="RunManager" selected="JUnit.Test">
     <configuration name="Test" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
       <option name="MAIN_CLASS_NAME" value="io.hamster.raft.storage.log.Test" />
       <module name="hamster" />
@@ -79,9 +86,59 @@
         <option name="Make" enabled="true" />
       </method>
     </configuration>
+    <configuration name="JournalSegmentFileTest.testIsSegmentFile" type="JUnit" factoryName="JUnit" temporary="true" nameIsGenerated="true">
+      <module name="hamster" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="io.hamster.storage.journal.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <option name="PACKAGE_NAME" value="io.hamster.storage.journal" />
+      <option name="MAIN_CLASS_NAME" value="io.hamster.storage.journal.JournalSegmentFileTest" />
+      <option name="METHOD_NAME" value="testIsSegmentFile" />
+      <option name="TEST_OBJECT" value="method" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Test" type="JUnit" factoryName="JUnit" temporary="true" nameIsGenerated="true">
+      <module name="hamster" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="io.hamster.storage.journal.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <option name="PACKAGE_NAME" value="io.hamster.storage.journal" />
+      <option name="MAIN_CLASS_NAME" value="io.hamster.storage.journal.Test" />
+      <option name="TEST_OBJECT" value="class" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Test.t" type="JUnit" factoryName="JUnit" temporary="true" nameIsGenerated="true">
+      <module name="hamster" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="io.hamster.storage.journal.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <option name="PACKAGE_NAME" value="io.hamster.storage.journal" />
+      <option name="MAIN_CLASS_NAME" value="io.hamster.storage.journal.Test" />
+      <option name="METHOD_NAME" value="t" />
+      <option name="TEST_OBJECT" value="method" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="JUnit.Test" />
+        <item itemvalue="JUnit.Test.t" />
         <item itemvalue="Application.Test" />
+        <item itemvalue="JUnit.JournalSegmentFileTest.testIsSegmentFile" />
       </list>
     </recent_temporary>
   </component>
@@ -109,7 +166,10 @@
       <updated>1598264426077</updated>
       <workItem from="1598264428374" duration="1349000" />
       <workItem from="1598321353550" duration="2142000" />
-      <workItem from="1598404712601" duration="2540000" />
+      <workItem from="1598404712601" duration="2631000" />
+      <workItem from="1598578006412" duration="2753000" />
+      <workItem from="1598922807378" duration="10982000" />
+      <workItem from="1599205777562" duration="748000" />
     </task>
     <task id="LOCAL-00001" summary="first commit">
       <created>1598264545703</created>
@@ -118,7 +178,14 @@
       <option name="project" value="LOCAL" />
       <updated>1598264545703</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="commit log proto definition">
+      <created>1598438661550</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1598438661550</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -126,44 +193,73 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="first commit" />
-    <option name="LAST_COMMIT_MESSAGE" value="first commit" />
+    <MESSAGE value="commit log proto definition" />
+    <option name="LAST_COMMIT_MESSAGE" value="commit log proto definition" />
   </component>
   <component name="WindowStateProjectService">
     <state x="552" y="179" key="#Project_Structure" timestamp="1598265425000">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state x="552" y="179" key="#Project_Structure/0.0.1920.1040@0.0.1920.1040" timestamp="1598265425000" />
-    <state x="743" y="148" key="CommitChangelistDialog2" timestamp="1598264543890">
+    <state x="765" y="230" key="#com.intellij.ide.util.MemberChooser" timestamp="1598956885900">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state x="743" y="148" key="CommitChangelistDialog2/0.0.1920.1040@0.0.1920.1040" timestamp="1598264543890" />
-    <state width="1877" height="348" key="GridCell.Tab.0.bottom" timestamp="1598438636777">
+    <state x="765" y="230" key="#com.intellij.ide.util.MemberChooser/0.0.1920.1040@0.0.1920.1040" timestamp="1598956885900" />
+    <state x="698" y="445" width="752" height="595" key="#xdebugger.evaluate" timestamp="1598961488391">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1877" height="348" key="GridCell.Tab.0.bottom/0.0.1920.1040@0.0.1920.1040" timestamp="1598438636777" />
-    <state width="1877" height="348" key="GridCell.Tab.0.center" timestamp="1598438636777">
+    <state x="698" y="445" width="752" height="595" key="#xdebugger.evaluate/0.0.1920.1040@0.0.1920.1040" timestamp="1598961488391" />
+    <state x="649" y="225" key="CommitChangelistDialog2" timestamp="1599206631361">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1877" height="348" key="GridCell.Tab.0.center/0.0.1920.1040@0.0.1920.1040" timestamp="1598438636777" />
-    <state width="1877" height="348" key="GridCell.Tab.0.left" timestamp="1598438636777">
+    <state x="649" y="225" key="CommitChangelistDialog2/0.0.1920.1040@0.0.1920.1040" timestamp="1599206631361" />
+    <state width="430" height="466" key="DebuggerActiveHint" timestamp="1598961504323">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1877" height="348" key="GridCell.Tab.0.left/0.0.1920.1040@0.0.1920.1040" timestamp="1598438636777" />
-    <state width="1877" height="348" key="GridCell.Tab.0.right" timestamp="1598438636777">
+    <state width="430" height="466" key="DebuggerActiveHint/0.0.1920.1040@0.0.1920.1040" timestamp="1598961504323" />
+    <state width="1860" height="163" key="GridCell.Tab.0.bottom" timestamp="1598961516916">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1877" height="348" key="GridCell.Tab.0.right/0.0.1920.1040@0.0.1920.1040" timestamp="1598438636777" />
-    <state x="552" y="253" key="Vcs.Push.Dialog.v2" timestamp="1598264585193">
+    <state width="1860" height="163" key="GridCell.Tab.0.bottom/0.0.1920.1040@0.0.1920.1040" timestamp="1598961516916" />
+    <state width="1860" height="163" key="GridCell.Tab.0.center" timestamp="1598961516915">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state x="552" y="253" key="Vcs.Push.Dialog.v2/0.0.1920.1040@0.0.1920.1040" timestamp="1598264585193" />
+    <state width="1860" height="163" key="GridCell.Tab.0.center/0.0.1920.1040@0.0.1920.1040" timestamp="1598961516915" />
+    <state width="1860" height="163" key="GridCell.Tab.0.left" timestamp="1598961516915">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1860" height="163" key="GridCell.Tab.0.left/0.0.1920.1040@0.0.1920.1040" timestamp="1598961516915" />
+    <state width="1860" height="163" key="GridCell.Tab.0.right" timestamp="1598961516916">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1860" height="163" key="GridCell.Tab.0.right/0.0.1920.1040@0.0.1920.1040" timestamp="1598961516916" />
+    <state width="1860" height="163" key="GridCell.Tab.1.bottom" timestamp="1598961516916">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1860" height="163" key="GridCell.Tab.1.bottom/0.0.1920.1040@0.0.1920.1040" timestamp="1598961516916" />
+    <state width="1860" height="163" key="GridCell.Tab.1.center" timestamp="1598961516916">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1860" height="163" key="GridCell.Tab.1.center/0.0.1920.1040@0.0.1920.1040" timestamp="1598961516916" />
+    <state width="1860" height="163" key="GridCell.Tab.1.left" timestamp="1598961516916">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1860" height="163" key="GridCell.Tab.1.left/0.0.1920.1040@0.0.1920.1040" timestamp="1598961516916" />
+    <state width="1860" height="163" key="GridCell.Tab.1.right" timestamp="1598961516916">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1860" height="163" key="GridCell.Tab.1.right/0.0.1920.1040@0.0.1920.1040" timestamp="1598961516916" />
+    <state x="552" y="253" key="Vcs.Push.Dialog.v2" timestamp="1598438666979">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state x="552" y="253" key="Vcs.Push.Dialog.v2/0.0.1920.1040@0.0.1920.1040" timestamp="1598438666979" />
     <state x="334" y="215" key="new project wizard" timestamp="1598264643629">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state x="334" y="215" key="new project wizard/0.0.1920.1040@0.0.1920.1040" timestamp="1598264643629" />
-    <state x="623" y="225" width="672" height="678" key="search.everywhere.popup" timestamp="1598437915540">
+    <state x="623" y="225" width="672" height="678" key="search.everywhere.popup" timestamp="1598947891761">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state x="623" y="225" width="672" height="678" key="search.everywhere.popup/0.0.1920.1040@0.0.1920.1040" timestamp="1598437915540" />
+    <state x="623" y="225" width="672" height="678" key="search.everywhere.popup/0.0.1920.1040@0.0.1920.1040" timestamp="1598947891761" />
   </component>
 </project>

@@ -9,10 +9,13 @@ public class MappableJournalSegmentWriter<E extends Message> implements JournalW
     private final FileChannel fileChannel;
     private final JournalSegment<E> journalSegment;
     private JournalWriter<E> writer;
+    private int maxEntrySize;
+
 
     public MappableJournalSegmentWriter(FileChannel fileChannel, JournalSegment<E> journalSegment) {
-        this.journalSegment = journalSegment;
         this.fileChannel = fileChannel;
+        this.journalSegment = journalSegment;
+        this.writer = new FileChannelJournalSegmentWriter<>(fileChannel,journalSegment,maxEntrySize,null);
     }
 
     @Override
@@ -58,7 +61,7 @@ public class MappableJournalSegmentWriter<E extends Message> implements JournalW
 
     @Override
     public void append(Indexed<E> entry) {
-
+        writer.append(entry);
     }
 
     @Override

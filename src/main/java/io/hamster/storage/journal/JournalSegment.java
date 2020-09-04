@@ -7,21 +7,33 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.google.common.base.Preconditions.checkState;
 
 public class JournalSegment<E extends Message> implements AutoCloseable {
 
-    private boolean open = true;
-    private final MappableJournalSegmentWriter<E> writer;
+    private final JournalSegmentFile file;
+    private final JournalSegmentDescriptor descriptor;
 
-    public JournalSegment(JournalSegmentFile file) {
+
+    private final MappableJournalSegmentWriter<E> writer;
+    private final AtomicInteger references = new AtomicInteger();
+    private boolean open = true;
+
+    public JournalSegment(
+            JournalSegmentFile file,
+            JournalSegmentDescriptor descriptor
+            ) {
+        this.file = file;
+        this.descriptor = descriptor;
         this.writer = new MappableJournalSegmentWriter<>(openChannel(file.file()), this);
     }
 
     @Override
     public void close() throws Exception {
-
+        this.writer.close();
+        this.open = false;
     }
 
     /**
@@ -41,6 +53,15 @@ public class JournalSegment<E extends Message> implements AutoCloseable {
         } catch (IOException e) {
             throw new StorageException(e);
         }
+    }
+
+    /**
+     * Returns the segment's starting index.
+     *
+     * @return The segment's starting index.
+     */
+    public long index() {
+        return descriptor.index();
     }
 
     /**

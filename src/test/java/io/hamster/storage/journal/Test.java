@@ -13,7 +13,7 @@ public class Test {
 
     @org.junit.Test
     public void t(){
-        ByteBuffer buffer = ByteBuffer.allocate(6);
+        /*ByteBuffer buffer = ByteBuffer.allocate(6);
         buffer.put("sss".getBytes());
         int len = buffer.limit();
         // Compute the checksum for the entry.
@@ -21,7 +21,7 @@ public class Test {
         ByteBuffer slice = buffer.slice();
         slice.limit(len);
         crc32.update(slice);
-        final long checksum = crc32.getValue();
+        final long checksum = crc32.getValue();*/
 
 
         RaftLogEntry logEntry = RaftLogEntry.newBuilder()
@@ -32,7 +32,13 @@ public class Test {
 
         File file = JournalSegmentFile.createSegmentFile("foo", new File(System.getProperty("user.dir")), 1);
         JournalSegmentFile journalSegmentFile = new JournalSegmentFile(file);
-        JournalSegment journalSegment = new JournalSegment(journalSegmentFile);
+
+        JournalSegmentDescriptor journalSegmentDescriptor = JournalSegmentDescriptor.builder()
+                .withId(1)
+                .withIndex(0)
+                .build();
+
+        JournalSegment journalSegment = new JournalSegment(journalSegmentFile,journalSegmentDescriptor);
         MappableJournalSegmentWriter writer = journalSegment.writer();
         Indexed<Message> indexed = new Indexed(0,logEntry,logEntry.getSerializedSize());
         writer.append(indexed);

@@ -1,6 +1,4 @@
 package io.hamster.storage.journal;
 
-public class SegmentedJournal {
-
-
+public interface JournalCodec<E> {
 }

@@ -1,6 +1,5 @@
 package io.hamster.storage.journal;
 
-import com.google.protobuf.Message;
 import io.hamster.storage.StorageException;
 
 import java.io.File;
@@ -11,7 +10,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.google.common.base.Preconditions.checkState;
 
-public class JournalSegment<E extends Message> implements AutoCloseable {
+public class JournalSegment<E> implements AutoCloseable {
 
     private final JournalSegmentFile file;
     private final JournalSegmentDescriptor descriptor;

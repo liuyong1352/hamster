@@ -1,7 +1,5 @@
 package io.hamster.storage.journal;
 
-import com.google.protobuf.CodedOutputStream;
-import com.google.protobuf.Message;
 import io.hamster.storage.StorageException;
 import io.hamster.storage.journal.index.JournalIndex;
 
@@ -23,7 +21,7 @@ import java.nio.channels.FileChannel;
  * <li>n-bit entry bytes</li>
  * </ul>
  */
-class FileChannelJournalSegmentWriter<E extends Message> implements JournalWriter<E> {
+class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
 
     private final FileChannel channel;
     private final JournalSegment segment;
@@ -67,7 +65,7 @@ class FileChannelJournalSegmentWriter<E extends Message> implements JournalWrite
         memory.clear();
 
         try {
-            memory.put(entry.toByteArray());
+            //memory.put();
             //entry.writeTo();
             //entry.writeTo(CodedOutputStream.newInstance(memory));
             memory.flip();

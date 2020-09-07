@@ -1,10 +1,8 @@
 package io.hamster.storage.journal;
 
-import com.google.protobuf.Message;
-
 import java.nio.channels.FileChannel;
 
-public class MappableJournalSegmentWriter<E extends Message> implements JournalWriter<E> {
+public class MappableJournalSegmentWriter<E> implements JournalWriter<E> {
 
     private final FileChannel fileChannel;
     private final JournalSegment<E> journalSegment;

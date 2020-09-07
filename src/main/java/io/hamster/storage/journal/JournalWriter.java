@@ -15,12 +15,11 @@
  */
 package io.hamster.storage.journal;
 
-import com.google.protobuf.Message;
 
 /**
  * Log writer.
  */
-public interface JournalWriter<E extends Message> extends AutoCloseable {
+public interface JournalWriter<E> extends AutoCloseable {
 
     /**
      * Returns the last written index.

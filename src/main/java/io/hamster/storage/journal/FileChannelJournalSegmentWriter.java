@@ -1,8 +1,11 @@
 package io.hamster.storage.journal;
 
+import com.google.protobuf.CodedOutputStream;
 import com.google.protobuf.Message;
+import io.hamster.storage.StorageException;
 import io.hamster.storage.journal.index.JournalIndex;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 
@@ -20,13 +23,13 @@ import java.nio.channels.FileChannel;
  * <li>n-bit entry bytes</li>
  * </ul>
  */
-class FileChannelJournalSegmentWriter<E extends Message> implements JournalWriter<E>  {
+class FileChannelJournalSegmentWriter<E extends Message> implements JournalWriter<E> {
 
     private final FileChannel channel;
     private final JournalSegment segment;
     private final int maxEntrySize;
     private final JournalIndex index;
-    //private final ByteBuffer memory;
+    private final ByteBuffer memory;
     private final long firstIndex;
     private Indexed<E> lastEntry;
 
@@ -35,13 +38,13 @@ class FileChannelJournalSegmentWriter<E extends Message> implements JournalWrite
             JournalSegment segment,
             int maxEntrySize,
             JournalIndex index
-    ){
+    ) {
         this.channel = channel;
         this.segment = segment;
         this.maxEntrySize = maxEntrySize;
         this.index = index;
         this.firstIndex = segment.index();
-        //this.memory = ByteBuffer.allocate();
+        this.memory = ByteBuffer.allocate((maxEntrySize + Integer.BYTES + Integer.BYTES) * 2);
     }
 
     @Override
@@ -61,12 +64,23 @@ class FileChannelJournalSegmentWriter<E extends Message> implements JournalWrite
 
     @Override
     public <T extends E> Indexed<T> append(T entry) {
-        return null;
+        memory.clear();
+
+        try {
+            memory.put(entry.toByteArray());
+            //entry.writeTo();
+            //entry.writeTo(CodedOutputStream.newInstance(memory));
+            memory.flip();
+            channel.write(memory);
+        } catch (IOException e) {
+            throw new StorageException(e);
+        }
+        return  null;
     }
 
     @Override
     public void append(Indexed<E> entry) {
-
+        append(entry.entry());
     }
 
     @Override

@@ -55,6 +55,15 @@ public class JournalSegment<E> implements AutoCloseable {
     }
 
     /**
+     * Returns the segment descriptor.
+     *
+     * @return The segment descriptor.
+     */
+    public JournalSegmentDescriptor descriptor() {
+        return descriptor;
+    }
+
+    /**
      * Returns the segment's starting index.
      *
      * @return The segment's starting index.
@@ -69,5 +78,6 @@ public class JournalSegment<E> implements AutoCloseable {
     private void checkOpen() {
         checkState(open, "Segment not open");
     }
+
 
 }

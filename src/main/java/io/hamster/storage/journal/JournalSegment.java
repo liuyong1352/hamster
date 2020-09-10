@@ -30,7 +30,7 @@ public class JournalSegment<E> implements AutoCloseable {
     }
 
     @Override
-    public void close() throws Exception {
+    public void close(){
         this.writer.close();
         this.open = false;
     }
@@ -43,6 +43,11 @@ public class JournalSegment<E> implements AutoCloseable {
     public MappableJournalSegmentWriter<E> writer() {
         checkOpen();
         return writer;
+    }
+
+
+    public void acquire(){
+        references.incrementAndGet();
     }
 
     private FileChannel openChannel(File file) {

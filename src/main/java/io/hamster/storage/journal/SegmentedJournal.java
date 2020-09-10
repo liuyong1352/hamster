@@ -16,8 +16,9 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkState;
 
-public class SegmentedJournal<E> {
+public class SegmentedJournal<E> implements Journal<E> {
 
     private final Logger log = LoggerFactory.getLogger(getClass());
 
@@ -29,34 +30,99 @@ public class SegmentedJournal<E> {
     private final NavigableMap<Long, JournalSegment<E>> segments = new ConcurrentSkipListMap<>();
 
     private final int maxEntrySize;
+    private final int maxSegmentSize;
     private JournalSegment<E> currentSegment;
+    private final SegmentedJournalWriter<E> writer;
 
+    private volatile boolean open = true;
 
     public SegmentedJournal(
             String name,
             StorageLevel storageLevel,
             File directory,
             JournalCodec<E> codec,
+            int maxSegmentSize,
             int maxEntrySize) {
         this.name = name;
         this.storageLevel = checkNotNull(storageLevel, "storageLevel cannot be null");
         this.directory = directory;
 
         this.codec = codec;
+        this.maxSegmentSize = maxSegmentSize;
         this.maxEntrySize = maxEntrySize;
         open();
+        this.writer = new SegmentedJournalWriter<>(this);
     }
 
+    /**
+     * Opens the segments.
+     */
     private void open() {
+        // Load existing log segments from disk.
         for (JournalSegment<E> segment : loadSegments()) {
             segments.put(segment.descriptor().index(), segment);
         }
-        if(segments.isEmpty()){
-            //construct new segment
+        // If a segment doesn't already exist, create an initial segment starting at index 1.
+        if (!segments.isEmpty()) {
+            currentSegment = segments.lastEntry().getValue();
         } else {
+            JournalSegmentDescriptor descriptor = JournalSegmentDescriptor.builder()
+                    .withId(1)
+                    .withIndex(1)
+                    .withMaxSegmentSize(maxSegmentSize)
+                    .build();
 
+            currentSegment = createSegment(descriptor);
         }
     }
+
+    private JournalSegment<E> createSegment(JournalSegmentDescriptor descriptor){
+        File file = JournalSegmentFile.createSegmentFile(name,directory,descriptor.id());
+        JournalSegmentFile journalSegmentFile = new JournalSegmentFile(file);
+        JournalSegment<E> journalSegment = new JournalSegment<E>(journalSegmentFile,descriptor);
+        segments.put(descriptor.index(),journalSegment);
+        return journalSegment;
+    }
+
+    @Override
+    public SegmentedJournalWriter<E> writer() {
+        return writer;
+    }
+
+    @Override
+    public JournalReader<E> openReader(long index) {
+        return null;
+    }
+
+    @Override
+    public JournalReader<E> openReader(long index, JournalReader.Mode mode) {
+        return null;
+    }
+
+    @Override
+    public boolean isOpen() {
+        return open;
+    }
+
+    /**
+     * Returns the last segment in the log.
+     *
+     * @throws IllegalStateException if the segment manager is not open
+     */
+    JournalSegment<E> getLastSegment() {
+        assertOpen();
+        return segments.lastEntry().getValue();
+    }
+
+    /**
+     * Asserts that the manager is open.
+     *
+     * @throws IllegalStateException if the segment manager is not open
+     */
+    private void assertOpen() {
+        checkState(currentSegment != null, "journal not open");
+    }
+
 
     /**
      * Loads all segments from disk.
@@ -96,5 +162,14 @@ public class SegmentedJournal<E> {
         } catch (IOException e) {
             throw new StorageException(e);
         }
+    }
+
+    @Override
+    public void close(){
+        segments.values().forEach(journalSegment -> {
+            journalSegment.close();
+        });
+        writer.close();
+        this.open = false;
     }
 }

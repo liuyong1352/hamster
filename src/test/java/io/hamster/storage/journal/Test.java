@@ -3,6 +3,7 @@ package io.hamster.storage.journal;
 import com.google.protobuf.Message;
 import io.hamster.protocols.raft.storage.log.QueryEntry;
 import io.hamster.protocols.raft.storage.log.RaftLogEntry;
+import io.hamster.storage.StorageLevel;
 
 import java.io.File;
 import java.nio.ByteBuffer;
@@ -38,10 +39,20 @@ public class Test {
                 .withIndex(0)
                 .build();
 
-        JournalSegment journalSegment = new JournalSegment(journalSegmentFile,journalSegmentDescriptor);
+        Indexed<RaftLogEntry> indexed = new Indexed(0,logEntry,logEntry.getSerializedSize());
+
+      /*  JournalSegment journalSegment = new JournalSegment(journalSegmentFile,journalSegmentDescriptor);
         MappableJournalSegmentWriter writer = journalSegment.writer();
-        Indexed<Message> indexed = new Indexed(0,logEntry,logEntry.getSerializedSize());
-        writer.append(indexed);
+        Indexed<RaftLogEntry> indexed = new Indexed(0,logEntry,logEntry.getSerializedSize());
+        writer.append(indexed);*/
+
+
+
+        SegmentedJournal<RaftLogEntry> segmentedJournal = new SegmentedJournal<>("test",
+                StorageLevel.MAPPED,new File(System.getProperty("user.dir")),new RaftLogCodec(),1024);
+
+        SegmentedJournalWriter<RaftLogEntry> writer1 = segmentedJournal.writer();
+        writer1.append(indexed);
     }
 
 }

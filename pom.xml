@@ -16,13 +16,12 @@
         <!-- required for jdk9 -->
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
+        <!-- Logging -->
+        <slf4j.version>1.7.7</slf4j.version>
         <junit.version>4.12</junit.version>
     </properties>
 
     <dependencyManagement>
-
-
-
         <dependencies>
             <dependency>
                 <groupId>io.grpc</groupId>
@@ -42,6 +41,13 @@
     </dependencyManagement>
 
     <dependencies>
+
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>${slf4j.version}</version>
+        </dependency>
+
         <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-netty-shaded</artifactId>

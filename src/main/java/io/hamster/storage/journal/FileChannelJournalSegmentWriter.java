@@ -28,18 +28,21 @@ class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
     private final int maxEntrySize;
     private final JournalIndex index;
     private final ByteBuffer memory;
+    private final JournalCodec<E> codec;
     private final long firstIndex;
     private Indexed<E> lastEntry;
 
     FileChannelJournalSegmentWriter(
             FileChannel channel,
             JournalSegment segment,
+            JournalCodec<E> codec,
             int maxEntrySize,
             JournalIndex index
     ) {
         this.channel = channel;
         this.segment = segment;
         this.maxEntrySize = maxEntrySize;
+        this.codec = codec;
         this.index = index;
         this.firstIndex = segment.index();
         this.memory = ByteBuffer.allocate((maxEntrySize + Integer.BYTES + Integer.BYTES) * 2);
@@ -52,32 +55,56 @@ class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
 
     @Override
     public Indexed<E> getLastEntry() {
-        return null;
+        return lastEntry;
     }
 
     @Override
     public long getNextIndex() {
-        return 0;
+        if(lastEntry != null){
+            return lastEntry.index() + 1;
+        } else {
+            return firstIndex;
+        }
     }
 
     @Override
     public <T extends E> Indexed<T> append(T entry) {
+
+        long index = getNextIndex();
+
         memory.clear();
+        memory.position(Integer.BYTES + Integer.BYTES);
 
         try {
-            //memory.put();
-            //entry.writeTo();
-            //entry.writeTo(CodedOutputStream.newInstance(memory));
-            memory.flip();
+            codec.encode(entry, memory);
+        } catch (Exception e) {
+            throw new StorageException.TooLarge("Entry size exceeds maximum allowed bytes (" + maxEntrySize + ")");
+        }
+
+        memory.flip();
+        int len = memory.limit() - 8;
+        try {
             channel.write(memory);
         } catch (IOException e) {
             throw new StorageException(e);
         }
-        return  null;
+        return new Indexed<>(index,entry,len);
     }
 
     @Override
     public void append(Indexed<E> entry) {
+        final long nextIndex = getNextIndex();
+
+        // If the entry's index is greater than the next index in the segment, skip some entries.
+        if (entry.index() > nextIndex) {
+            throw new IndexOutOfBoundsException("Entry index is not sequential");
+        }
+        // If the entry's index is less than the next index in the segment ,truncate the segment
+        if (entry.index() < nextIndex) {
+            truncate(entry.index() - 1);
+        }
+
+
         append(entry.entry());
     }
 

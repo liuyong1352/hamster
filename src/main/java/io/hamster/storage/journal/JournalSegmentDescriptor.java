@@ -34,7 +34,6 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * </ul>
  * The remainder of the 64 segment header bytes are reserved for future metadata.
  *
- * @author <a href="http://github.com/kuujo">Jordan Halterman</a>
  */
 public final class JournalSegmentDescriptor {
     public static final int BYTES = 64;

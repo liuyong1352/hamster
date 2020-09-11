@@ -30,12 +30,12 @@ public class SegmentedJournalWriter<E> implements JournalWriter<E> {
 
     @Override
     public <T extends E> Indexed<T> append(T entry) {
-        return null;
+        return currentWriter.append(entry);
     }
 
     @Override
     public void append(Indexed<E> entry) {
-
+        currentWriter.append(entry);
     }
 
     @Override

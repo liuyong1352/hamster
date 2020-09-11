@@ -14,6 +14,7 @@ public class JournalSegment<E> implements AutoCloseable {
 
     private final JournalSegmentFile file;
     private final JournalSegmentDescriptor descriptor;
+    private final JournalCodec<E> codec;
 
 
     private final MappableJournalSegmentWriter<E> writer;
@@ -22,11 +23,14 @@ public class JournalSegment<E> implements AutoCloseable {
 
     public JournalSegment(
             JournalSegmentFile file,
-            JournalSegmentDescriptor descriptor
+            JournalSegmentDescriptor descriptor,
+            JournalCodec<E> codec,
+            int maxEntrySize
             ) {
         this.file = file;
         this.descriptor = descriptor;
-        this.writer = new MappableJournalSegmentWriter<>(openChannel(file.file()), this);
+        this.codec = codec;
+        this.writer = new MappableJournalSegmentWriter<>(openChannel(file.file()), this,codec,maxEntrySize);
     }
 
     @Override

@@ -6,14 +6,21 @@ public class MappableJournalSegmentWriter<E> implements JournalWriter<E> {
 
     private final FileChannel fileChannel;
     private final JournalSegment<E> journalSegment;
+    private final JournalCodec<E> codec;
+
     private JournalWriter<E> writer;
     private int maxEntrySize;
 
 
-    public MappableJournalSegmentWriter(FileChannel fileChannel, JournalSegment<E> journalSegment) {
+    public MappableJournalSegmentWriter(FileChannel fileChannel,
+                                        JournalSegment<E> journalSegment,
+                                        JournalCodec<E> codec,
+                                        int maxEntrySize
+                                        ) {
         this.fileChannel = fileChannel;
         this.journalSegment = journalSegment;
-        this.writer = new FileChannelJournalSegmentWriter<>(fileChannel,journalSegment,maxEntrySize,null);
+        this.codec = codec;
+        this.writer = new FileChannelJournalSegmentWriter<>(fileChannel, journalSegment, codec, maxEntrySize, null);
     }
 
     @Override
@@ -63,7 +70,7 @@ public class MappableJournalSegmentWriter<E> implements JournalWriter<E> {
     }
 
     @Override
-    public void close(){
+    public void close() {
 
     }
 }

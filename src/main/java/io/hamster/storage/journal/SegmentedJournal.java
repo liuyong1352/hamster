@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
@@ -73,15 +74,48 @@ public class SegmentedJournal<E> implements Journal<E> {
                     .build();
 
             currentSegment = createSegment(descriptor);
+
+            segments.put(descriptor.index(), currentSegment);
         }
     }
 
-    private JournalSegment<E> createSegment(JournalSegmentDescriptor descriptor){
-        File file = JournalSegmentFile.createSegmentFile(name,directory,descriptor.id());
-        JournalSegmentFile journalSegmentFile = new JournalSegmentFile(file);
-        JournalSegment<E> journalSegment = new JournalSegment<E>(journalSegmentFile,descriptor);
-        segments.put(descriptor.index(),journalSegment);
-        return journalSegment;
+    private JournalSegment<E> createSegment(JournalSegmentDescriptor descriptor) {
+        File segmentFile = JournalSegmentFile.createSegmentFile(name, directory, descriptor.id());
+
+        RandomAccessFile randomFile = null;
+        FileChannel channel = null;
+        try {
+            randomFile = new RandomAccessFile(segmentFile, "rw");
+            randomFile.setLength(descriptor.maxSegmentSize());
+            channel = randomFile.getChannel();
+
+            ByteBuffer buffer = ByteBuffer.allocate(JournalSegmentDescriptor.BYTES);
+            descriptor.copyTo(buffer);
+            buffer.flip();
+            channel.write(buffer);
+
+        } catch (IOException e) {
+            throw new StorageException(e);
+        } finally {
+            try {
+                if (channel != null) {
+                    channel.close();
+                }
+
+                if (randomFile != null) {
+                    randomFile.close();
+                }
+            } catch (IOException e) {
+                //ignore
+            }
+        }
+        JournalSegment<E> segment = newSegment(new JournalSegmentFile(segmentFile), descriptor);
+        log.debug("Created segment: {}", segment);
+        return segment;
+    }
+
+    private JournalSegment<E> newSegment(JournalSegmentFile journalSegmentFile, JournalSegmentDescriptor descriptor) {
+        return new JournalSegment<>(journalSegmentFile, descriptor, codec, maxEntrySize);
     }
 
     @Override
@@ -147,7 +181,7 @@ public class SegmentedJournal<E> implements Journal<E> {
                     throw new StorageException(e);
                 }
                 JournalSegmentDescriptor descriptor = new JournalSegmentDescriptor(buffer);
-                JournalSegment<E> segment = new JournalSegment<>(new JournalSegmentFile(file), descriptor);
+                JournalSegment<E> segment = newSegment(new JournalSegmentFile(file), descriptor);
                 // Add the segment to the segments list.
                 log.debug("Found segment: {} ({})", segment.descriptor().id(), segmentFile.file().getName());
                 segments.put(descriptor.index(), segment);
@@ -165,7 +199,7 @@ public class SegmentedJournal<E> implements Journal<E> {
     }
 
     @Override
-    public void close(){
+    public void close() {
         segments.values().forEach(journalSegment -> {
             journalSegment.close();
         });

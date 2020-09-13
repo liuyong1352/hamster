@@ -46,6 +46,7 @@ class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
         this.index = index;
         this.firstIndex = segment.index();
         this.memory = ByteBuffer.allocate((maxEntrySize + Integer.BYTES + Integer.BYTES) * 2);
+        reset(0);
     }
 
     @Override
@@ -115,6 +116,11 @@ class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
 
     @Override
     public void reset(long index) {
+        try {
+            channel.position(JournalSegmentDescriptor.BYTES);
+        } catch (IOException e) {
+            throw new StorageException(e);
+        }
 
     }
 

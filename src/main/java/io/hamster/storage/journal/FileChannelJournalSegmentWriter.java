@@ -6,6 +6,7 @@ import io.hamster.storage.journal.index.JournalIndex;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.zip.CRC32;
 
 
 /**
@@ -82,9 +83,18 @@ class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
             throw new StorageException.TooLarge("Entry size exceeds maximum allowed bytes (" + maxEntrySize + ")");
         }
 
-        memory.flip();
-        int len = memory.limit() - 8;
+        int len = memory.position() - 8;
+        final CRC32 crc32 = new CRC32();
+        ByteBuffer slice = memory.slice();
+            slice.position(memory.position());
+        slice.flip();
+        slice.position(8);
+        crc32.update(slice);
+        final long checkSum = crc32.getValue();
         try {
+            memory.putInt(0,len);
+            memory.putInt(Integer.BYTES,(int)checkSum);
+            memory.flip();
             channel.write(memory);
         } catch (IOException e) {
             throw new StorageException(e);
@@ -105,7 +115,6 @@ class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
             truncate(entry.index() - 1);
         }
 
-
         append(entry.entry());
     }
 
@@ -118,6 +127,18 @@ class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
     public void reset(long index) {
         try {
             channel.position(JournalSegmentDescriptor.BYTES);
+
+            memory.clear();
+            channel.read(memory);
+            /*
+            if(memory.remaining() <= maxEntrySize){
+                memory.position(Integer.BYTES + Integer.BYTES);
+                int position = memory.position();
+                E entry = codec.decode(memory);
+                int size = memory.position() - position;
+                lastEntry = new Indexed<>(firstIndex,entry,size);
+            }
+            */
         } catch (IOException e) {
             throw new StorageException(e);
         }

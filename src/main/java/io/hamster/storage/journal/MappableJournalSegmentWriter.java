@@ -36,7 +36,7 @@ public class MappableJournalSegmentWriter<E> implements JournalWriter<E> {
 
     @Override
     public long getNextIndex() {
-        return 0;
+        return writer.getNextIndex();
     }
 
     @Override

@@ -37,8 +37,6 @@ public class Test {
                 .withIndex(0)
                 .build();
 
-        Indexed<RaftLogEntry> indexed = new Indexed(0, logEntry, logEntry.getSerializedSize());
-
       /*  JournalSegment journalSegment = new JournalSegment(journalSegmentFile,journalSegmentDescriptor);
         MappableJournalSegmentWriter writer = journalSegment.writer();
         Indexed<RaftLogEntry> indexed = new Indexed(0,logEntry,logEntry.getSerializedSize());
@@ -52,6 +50,10 @@ public class Test {
                 1024);
 
         SegmentedJournalWriter<RaftLogEntry> writer1 = segmentedJournal.writer();
+        long next = writer1.getNextIndex();
+
+        Indexed<RaftLogEntry> indexed = new Indexed(next, logEntry, logEntry.getSerializedSize());
+
         writer1.append(indexed);
     }
 

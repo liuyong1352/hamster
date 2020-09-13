@@ -25,7 +25,7 @@ public class SegmentedJournalWriter<E> implements JournalWriter<E> {
 
     @Override
     public long getNextIndex() {
-        return 0;
+        return currentWriter.getNextIndex();
     }
 
     @Override

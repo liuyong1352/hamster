@@ -62,7 +62,7 @@ class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
 
     @Override
     public long getNextIndex() {
-        if(lastEntry != null){
+        if (lastEntry != null) {
             return lastEntry.index() + 1;
         } else {
             return firstIndex;
@@ -83,23 +83,24 @@ class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
             throw new StorageException.TooLarge("Entry size exceeds maximum allowed bytes (" + maxEntrySize + ")");
         }
 
-        int len = memory.position() - 8;
+        memory.flip();
+
+        final int length = memory.limit() - (Integer.BYTES + Integer.BYTES);
         final CRC32 crc32 = new CRC32();
-        ByteBuffer slice = memory.slice();
-            slice.position(memory.position());
-        slice.flip();
-        slice.position(8);
-        crc32.update(slice);
+        crc32.update(memory.array(), Integer.BYTES + Integer.BYTES, length);
         final long checkSum = crc32.getValue();
         try {
-            memory.putInt(0,len);
-            memory.putInt(Integer.BYTES,(int)checkSum);
-            memory.flip();
+            memory.putInt(0, length);
+            memory.putInt(Integer.BYTES, (int) checkSum);
             channel.write(memory);
+
+            // Update the last entry with the correct index/term/length.
+            Indexed<E> indexedEntry = new Indexed<>(index, entry, length);
+            this.lastEntry = indexedEntry;
+            return (Indexed<T>) indexedEntry;
         } catch (IOException e) {
             throw new StorageException(e);
         }
-        return new Indexed<>(index,entry,len);
     }
 
     @Override
@@ -125,20 +126,42 @@ class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
 
     @Override
     public void reset(long index) {
+        long nextIndex = firstIndex;
         try {
             channel.position(JournalSegmentDescriptor.BYTES);
 
             memory.clear();
-            channel.read(memory);
-            /*
-            if(memory.remaining() <= maxEntrySize){
-                memory.position(Integer.BYTES + Integer.BYTES);
-                int position = memory.position();
-                E entry = codec.decode(memory);
-                int size = memory.position() - position;
-                lastEntry = new Indexed<>(firstIndex,entry,size);
+            memory.flip();
+            // Record the current buffer position.
+            long position = channel.position();
+
+            if (memory.remaining() < maxEntrySize) {
+                memory.clear();
+                channel.read(memory);
+                channel.position(position);
+                memory.flip();
+
             }
-            */
+            memory.mark();
+            int length = memory.getInt();
+
+            while (length > 0 && length <= maxEntrySize) {
+                long checkSum = ((long)memory.getInt()) & 0xFFFFFFFFL;
+                final CRC32 crc32 = new CRC32();
+                crc32.update(memory.array(),memory.position(),length);
+                if(checkSum == crc32.getValue()){
+                    int limit = memory.limit();
+                    memory.limit(memory.position() + length);
+                    E entry = codec.decode(memory);
+                    Indexed<E> indexedEntry = new Indexed<>(firstIndex,entry,length);
+                    memory.limit(limit);
+                    this.lastEntry = indexedEntry;
+                    nextIndex++;
+                } else {
+                    break;
+                }
+            }
+
         } catch (IOException e) {
             throw new StorageException(e);
         }

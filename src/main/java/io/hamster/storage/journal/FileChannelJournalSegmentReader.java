@@ -109,9 +109,12 @@ public class FileChannelJournalSegmentReader<E> implements JournalReader<E> {
         long nextIndex = getNextIndex();
         try {
             if (memory.remaining() < maxEntrySize) {
+                long position = channel.position() + memory.position();
+                channel.position(position);
                 memory.clear();
                 channel.read(memory);
-
+                //reset channel position
+                channel.position(position);
                 memory.flip();
             }
 

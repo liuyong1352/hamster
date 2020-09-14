@@ -38,6 +38,7 @@ public class SegmentedJournal<E> implements Journal<E> {
     private final SegmentedJournalWriter<E> writer;
     private final Collection<SegmentedJournalReader> readers = Sets.newConcurrentHashSet();
 
+    private volatile long commitIndex;
     private volatile boolean open = true;
 
     public SegmentedJournal(
@@ -121,6 +122,24 @@ public class SegmentedJournal<E> implements Journal<E> {
         return new JournalSegment<>(journalSegmentFile, descriptor, codec, maxEntrySize);
     }
 
+    /**
+     * Commits entries up to the given index.
+     *
+     * @param index The index up to which to commit entries.
+     */
+    void setCommitIndex(long index) {
+        this.commitIndex = index;
+    }
+
+    /**
+     * Returns the Raft log commit index.
+     *
+     * @return The Raft log commit index.
+     */
+    long getCommitIndex() {
+        return commitIndex;
+    }
+
     @Override
     public SegmentedJournalWriter<E> writer() {
         return writer;
@@ -160,7 +179,7 @@ public class SegmentedJournal<E> implements Journal<E> {
         if(segment != null){
             return segment.getValue();
         }
-        return getLastSegment();
+        return getFirstSegment();
     }
 
     /**
@@ -184,6 +203,10 @@ public class SegmentedJournal<E> implements Journal<E> {
         assertOpen();
         Map.Entry<Long, JournalSegment<E>> segment = segments.firstEntry();
         return segment != null ? segment.getValue() : null;
+    }
+
+    void closeReader(SegmentedJournalReader reader) {
+        readers.remove(reader);
     }
 
     @Override

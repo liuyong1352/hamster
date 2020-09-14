@@ -1,5 +1,7 @@
 package io.hamster.storage.journal;
 
+import java.util.NoSuchElementException;
+
 public class SegmentedJournalReader<E> implements JournalReader<E> {
 
     private final SegmentedJournal<E> journal;
@@ -54,7 +56,9 @@ public class SegmentedJournalReader<E> implements JournalReader<E> {
         if (Mode.ALL == mode) {
             return hasNextEntry();
         }
-        return hasNextEntry();
+        long nextIndex = getNextIndex();
+        long commitIndex = journal.getCommitIndex();
+        return (nextIndex <= commitIndex) && hasNextEntry();
     }
 
     private boolean hasNextEntry() {
@@ -78,7 +82,23 @@ public class SegmentedJournalReader<E> implements JournalReader<E> {
 
     @Override
     public Indexed<E> next() {
-        return currentReader.next();
+        if (!currentReader.hasNext()) {
+            JournalSegment<E> nextSegment = journal.getNextSegment(currentSegment.index());
+            if (nextSegment != null && nextSegment.index() == getNextIndex()) {
+                previousEntry = currentReader.getCurrentEntry();
+                currentSegment.release();
+                currentSegment = nextSegment;
+                currentSegment.acquire();
+                currentReader = currentSegment.createReader();
+                return currentReader.next();
+            } else {
+                throw new NoSuchElementException();
+            }
+        } else {
+            previousEntry = currentReader.getCurrentEntry();
+            return currentReader.next();
+        }
+
     }
 
     @Override
@@ -94,5 +114,6 @@ public class SegmentedJournalReader<E> implements JournalReader<E> {
     @Override
     public void close() {
         currentReader.close();
+        journal.closeReader(this);
     }
 }

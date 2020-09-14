@@ -1,5 +1,6 @@
 package io.hamster.storage.journal;
 
+import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 
 public class MappableJournalSegmentWriter<E> implements JournalWriter<E> {
@@ -21,6 +22,14 @@ public class MappableJournalSegmentWriter<E> implements JournalWriter<E> {
         this.journalSegment = journalSegment;
         this.codec = codec;
         this.writer = new FileChannelJournalSegmentWriter<>(fileChannel, journalSegment, codec, maxEntrySize, null);
+    }
+
+    MappedByteBuffer buffer() {
+        JournalWriter<E> writer = this.writer;
+        if (writer instanceof MappedJournalSegmentWriter) {
+            return ((MappedJournalSegmentWriter<E>) writer).buffer();
+        }
+        return null;
     }
 
     @Override

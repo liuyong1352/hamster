@@ -1,15 +1,9 @@
 package io.hamster.storage.journal;
 
-import com.google.protobuf.CodedOutputStream;
-import com.google.protobuf.Message;
-
-import java.io.IOException;
-import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
-import java.util.zip.CRC32;
 
-public class MappedJournalSegmentWriter<E extends Message> implements JournalWriter<E> {
+public class MappedJournalSegmentWriter<E> implements JournalWriter<E> {
 
     private final MappedByteBuffer mappedBuffer;
     private final ByteBuffer buffer;
@@ -17,6 +11,15 @@ public class MappedJournalSegmentWriter<E extends Message> implements JournalWri
     MappedJournalSegmentWriter(MappedByteBuffer buffer) {
         this.mappedBuffer = buffer;
         this.buffer = buffer.slice();
+    }
+
+    /**
+     * Returns the mapped buffer underlying the segment writer.
+     *
+     * @return the mapped buffer underlying the segment writer
+     */
+    MappedByteBuffer buffer() {
+        return mappedBuffer;
     }
 
     @Override
@@ -37,27 +40,6 @@ public class MappedJournalSegmentWriter<E extends Message> implements JournalWri
     @Override
     public <T extends E> Indexed<T> append(T entry) {
 
-        // Serialize the entry.
-        int position = buffer.position();
-        if (position + Integer.BYTES + Integer.BYTES > buffer.limit()) {
-            throw new BufferOverflowException();
-        }
-
-        int length = entry.getSerializedSize();
-
-        // Compute the checksum for the entry.
-        final CRC32 crc32 = new CRC32();
-        ByteBuffer slice = buffer.slice();
-        slice.limit(length);
-        crc32.update(slice);
-        final long checksum = crc32.getValue();
-
-        CodedOutputStream codedOutputStream = CodedOutputStream.newInstance(buffer);
-        try {
-            entry.writeTo(codedOutputStream);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
         return null;
     }
 
@@ -68,6 +50,8 @@ public class MappedJournalSegmentWriter<E extends Message> implements JournalWri
 
 
     }
+
+
 
     @Override
     public void commit(long index) {

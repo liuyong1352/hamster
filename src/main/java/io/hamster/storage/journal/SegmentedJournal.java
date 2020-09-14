@@ -1,5 +1,6 @@
 package io.hamster.storage.journal;
 
+import com.google.common.collect.Sets;
 import io.hamster.storage.StorageException;
 import io.hamster.storage.StorageLevel;
 import org.slf4j.Logger;
@@ -12,6 +13,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.Collection;
+import java.util.Map;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentSkipListMap;
@@ -34,6 +36,7 @@ public class SegmentedJournal<E> implements Journal<E> {
     private final int maxSegmentSize;
     private JournalSegment<E> currentSegment;
     private final SegmentedJournalWriter<E> writer;
+    private final Collection<SegmentedJournalReader> readers = Sets.newConcurrentHashSet();
 
     private volatile boolean open = true;
 
@@ -124,13 +127,63 @@ public class SegmentedJournal<E> implements Journal<E> {
     }
 
     @Override
-    public JournalReader<E> openReader(long index) {
-        return null;
+    public SegmentedJournalReader<E> openReader(long index) {
+        return openReader(index, SegmentedJournalReader.Mode.ALL);
     }
 
-    @Override
-    public JournalReader<E> openReader(long index, JournalReader.Mode mode) {
-        return null;
+    /**
+     * Opens a new Raft log reader with the given reader mode.
+     *
+     * @param index The index from which to begin reading entries.
+     * @param mode  The mode in which to read entries.
+     * @return The Raft log reader.
+     */
+    public SegmentedJournalReader<E> openReader(long index, SegmentedJournalReader.Mode mode) {
+        SegmentedJournalReader<E> reader = new SegmentedJournalReader<>(this, index, mode);
+        readers.add(reader);
+        return reader;
+    }
+
+    /**
+     * Returns the segment for the given index.
+     *
+     * @param index The index for which to return the segment.
+     * @throws IllegalStateException if the segment manager is not open
+     */
+    synchronized JournalSegment<E> getSegment(long index) {
+        assertOpen();
+        if (currentSegment != null && index > currentSegment.index()) {
+            return currentSegment;
+        }
+        // If the index is in another segment, get the entry with the next lowest first index.
+        Map.Entry<Long, JournalSegment<E>> segment = segments.floorEntry(index);
+        if(segment != null){
+            return segment.getValue();
+        }
+        return getLastSegment();
+    }
+
+    /**
+     * Returns the segment following the segment with the given ID.
+     *
+     * @param index The segment index with which to look up the next segment.
+     * @return The next segment for the given index.
+     */
+    JournalSegment<E> getNextSegment(long index) {
+        Map.Entry<Long, JournalSegment<E>> nextSegment = segments.higherEntry(index);
+        return nextSegment != null ? nextSegment.getValue() : null;
+    }
+
+
+    /**
+     * Returns the first segment in the log.
+     *
+     * @throws IllegalStateException if the segment manager is not open
+     */
+    JournalSegment<E> getFirstSegment() {
+        assertOpen();
+        Map.Entry<Long, JournalSegment<E>> segment = segments.firstEntry();
+        return segment != null ? segment.getValue() : null;
     }
 
     @Override

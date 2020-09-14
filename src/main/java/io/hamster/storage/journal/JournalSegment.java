@@ -2,8 +2,8 @@ package io.hamster.storage.journal;
 
 import io.hamster.storage.StorageException;
 
-import java.io.File;
 import java.io.IOException;
+import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -19,6 +19,7 @@ public class JournalSegment<E> implements AutoCloseable {
 
     private final MappableJournalSegmentWriter<E> writer;
     private final AtomicInteger references = new AtomicInteger();
+    private final int maxEntrySize;
     private boolean open = true;
 
     public JournalSegment(
@@ -26,15 +27,16 @@ public class JournalSegment<E> implements AutoCloseable {
             JournalSegmentDescriptor descriptor,
             JournalCodec<E> codec,
             int maxEntrySize
-            ) {
+    ) {
         this.file = file;
         this.descriptor = descriptor;
         this.codec = codec;
-        this.writer = new MappableJournalSegmentWriter<>(openChannel(file.file()), this,codec,maxEntrySize);
+        this.maxEntrySize = maxEntrySize;
+        this.writer = new MappableJournalSegmentWriter<>(openChannel(), this, codec, maxEntrySize);
     }
 
     @Override
-    public void close(){
+    public void close() {
         this.writer.close();
         this.open = false;
     }
@@ -49,14 +51,43 @@ public class JournalSegment<E> implements AutoCloseable {
         return writer;
     }
 
-
-    public void acquire(){
-        references.incrementAndGet();
+    /**
+     * Creates a new segment reader.
+     *
+     * @return A new segment reader.
+     */
+    MappableJournalSegmentReader<E> createReader() {
+        checkOpen();
+        MappableJournalSegmentReader reader = new MappableJournalSegmentReader(openChannel(), this,
+                maxEntrySize, null, codec);
+        MappedByteBuffer buffer = writer.buffer();
+        if (buffer != null) {
+            //reader.map(buffer);
+        }
+        return reader;
     }
 
-    private FileChannel openChannel(File file) {
+    /**
+     * Acquires a reference to the log segment.
+     */
+    void acquire() {
+        if(references.getAndIncrement() == 0 && open){
+            //map();
+        }
+    }
+
+    /**
+     * Releases a reference to the log segment.
+     */
+    void release() {
+        if (references.decrementAndGet() == 0 && open) {
+            //unmap();
+        }
+    }
+
+    private FileChannel openChannel() {
         try {
-            return FileChannel.open(file.toPath(), StandardOpenOption.CREATE,
+            return FileChannel.open(this.file.file().toPath(), StandardOpenOption.CREATE,
                     StandardOpenOption.READ, StandardOpenOption.WRITE);
         } catch (IOException e) {
             throw new StorageException(e);

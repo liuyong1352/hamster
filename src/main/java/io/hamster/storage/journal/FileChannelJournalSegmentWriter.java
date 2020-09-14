@@ -145,22 +145,36 @@ class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
             memory.mark();
             int length = memory.getInt();
 
-            while (length > 0 && length <= maxEntrySize) {
-                long checkSum = ((long)memory.getInt()) & 0xFFFFFFFFL;
+            while (length > 0 && length <= maxEntrySize && (index == 0 || nextIndex < index)) {
+                long checkSum = ((long) memory.getInt()) & 0xFFFFFFFFL;
                 final CRC32 crc32 = new CRC32();
-                crc32.update(memory.array(),memory.position(),length);
-                if(checkSum == crc32.getValue()){
+                crc32.update(memory.array(), memory.position(), length);
+                if (checkSum == crc32.getValue()) {
                     int limit = memory.limit();
                     memory.limit(memory.position() + length);
                     E entry = codec.decode(memory);
-                    Indexed<E> indexedEntry = new Indexed<>(firstIndex,entry,length);
+                    Indexed<E> indexedEntry = new Indexed<>(nextIndex, entry, length);
                     memory.limit(limit);
                     this.lastEntry = indexedEntry;
                     nextIndex++;
                 } else {
                     break;
                 }
+                // Update the current position for indexing.
+                position = channel.position() + memory.position();
+
+                // Read more bytes from the segment if necessary.
+                if (memory.remaining() < maxEntrySize) {
+                    memory.clear();
+                    channel.position(position);
+                    channel.read(memory);
+                    memory.flip();
+                }
+                memory.mark();
+                length = memory.getInt();
             }
+
+            channel.position(position);
 
         } catch (IOException e) {
             throw new StorageException(e);

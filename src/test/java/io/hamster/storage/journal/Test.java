@@ -1,46 +1,20 @@
 package io.hamster.storage.journal;
 
+import com.google.protobuf.ByteString;
 import io.hamster.protocols.raft.storage.log.QueryEntry;
 import io.hamster.protocols.raft.storage.log.RaftLogCodec;
 import io.hamster.protocols.raft.storage.log.RaftLogEntry;
 import io.hamster.storage.StorageLevel;
 
 import java.io.File;
+import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
 
 public class Test {
 
 
     @org.junit.Test
     public void t() {
-        /*ByteBuffer buffer = ByteBuffer.allocate(6);
-        buffer.put("sss".getBytes());
-        int len = buffer.limit();
-        // Compute the checksum for the entry.
-        final CRC32 crc32 = new CRC32();
-        ByteBuffer slice = buffer.slice();
-        slice.limit(len);
-        crc32.update(slice);
-        final long checksum = crc32.getValue();*/
-
-
-        RaftLogEntry logEntry = RaftLogEntry.newBuilder()
-                .setTerm(1)
-                .setTimestamp(System.currentTimeMillis())
-                .setQuery(QueryEntry.newBuilder().build())
-                .build();
-
-        File file = JournalSegmentFile.createSegmentFile("foo", new File(System.getProperty("user.dir")), 1);
-        JournalSegmentFile journalSegmentFile = new JournalSegmentFile(file);
-
-        JournalSegmentDescriptor journalSegmentDescriptor = JournalSegmentDescriptor.builder()
-                .withId(1)
-                .withIndex(0)
-                .build();
-
-      /*  JournalSegment journalSegment = new JournalSegment(journalSegmentFile,journalSegmentDescriptor);
-        MappableJournalSegmentWriter writer = journalSegment.writer();
-        Indexed<RaftLogEntry> indexed = new Indexed(0,logEntry,logEntry.getSerializedSize());
-        writer.append(indexed);*/
 
 
         SegmentedJournal<RaftLogEntry> segmentedJournal = new SegmentedJournal<>("test",
@@ -49,12 +23,28 @@ public class Test {
                 new RaftLogCodec(), 1024 * 1024,
                 1024);
 
+
         SegmentedJournalWriter<RaftLogEntry> writer1 = segmentedJournal.writer();
+
         long next = writer1.getNextIndex();
+
+        RaftLogEntry logEntry = RaftLogEntry.newBuilder()
+                .setTerm(1)
+                .setTimestamp(System.currentTimeMillis())
+                .setQuery(QueryEntry.newBuilder()
+                        .setValue(ByteString.copyFrom("中国", Charset.defaultCharset()))
+                        .build())
+                .build();
 
         Indexed<RaftLogEntry> indexed = new Indexed(next, logEntry, logEntry.getSerializedSize());
 
         writer1.append(indexed);
+
+        SegmentedJournalReader<RaftLogEntry> reader = segmentedJournal.openReader(1);
+
+        Indexed<RaftLogEntry> indexed1 = reader.next();
+        System.out.println(indexed1.entry().getQuery().getValue().toString(Charset.defaultCharset()));
+        System.out.println(indexed1);
     }
 
 }

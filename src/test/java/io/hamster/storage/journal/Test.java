@@ -20,14 +20,15 @@ public class Test {
         SegmentedJournal<RaftLogEntry> segmentedJournal = new SegmentedJournal<>("test",
                 StorageLevel.MAPPED,
                 new File(System.getProperty("user.dir")),
-                new RaftLogCodec(), 1024 * 1024,
-                1024);
+                new RaftLogCodec(), 1024,
+                8);
 
 
         SegmentedJournalWriter<RaftLogEntry> writer1 = segmentedJournal.writer();
+        SegmentedJournalReader<RaftLogEntry> reader = segmentedJournal.openReader(1);
 
 
-        int n = 1000 ;
+        int n = 5 ;
         for(int i=0;i<n ;i++){
             long next = writer1.getNextIndex();
 
@@ -43,7 +44,7 @@ public class Test {
             writer1.append(indexed);
             System.out.println(next);
         }
-        SegmentedJournalReader<RaftLogEntry> reader = segmentedJournal.openReader(1);
+
         while (reader.hasNext()){
             Indexed<RaftLogEntry> indexed1 = reader.next();
             System.out.println(indexed1.entry().getQuery().getValue().toString(Charset.defaultCharset()));

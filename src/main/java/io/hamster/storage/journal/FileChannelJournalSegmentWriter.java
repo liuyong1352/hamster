@@ -4,6 +4,7 @@ import io.hamster.storage.StorageException;
 import io.hamster.storage.journal.index.JournalIndex;
 
 import java.io.IOException;
+import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.zip.CRC32;
@@ -38,8 +39,7 @@ class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
             JournalSegment segment,
             JournalCodec<E> codec,
             int maxEntrySize,
-            JournalIndex index
-    ) {
+            JournalIndex index) {
         this.channel = channel;
         this.segment = segment;
         this.maxEntrySize = maxEntrySize;
@@ -52,7 +52,7 @@ class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
 
     @Override
     public long getLastIndex() {
-        return 0;
+        return lastEntry != null ? lastEntry.index() : firstIndex - 1;
     }
 
     @Override
@@ -84,12 +84,19 @@ class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
         }
 
         memory.flip();
-
-        final int length = memory.limit() - (Integer.BYTES + Integer.BYTES);
-        final CRC32 crc32 = new CRC32();
-        crc32.update(memory.array(), Integer.BYTES + Integer.BYTES, length);
-        final long checkSum = crc32.getValue();
         try {
+            final int length = memory.limit() - (Integer.BYTES + Integer.BYTES);
+
+            // Ensure there's enough space left in the buffer to store the entry.
+            long position = channel.position();
+            if (segment.descriptor().maxSegmentSize() - position < length + Integer.BYTES + Integer.BYTES) {
+                throw new BufferOverflowException();
+            }
+
+            final CRC32 crc32 = new CRC32();
+            crc32.update(memory.array(), Integer.BYTES + Integer.BYTES, length);
+            final long checkSum = crc32.getValue();
+
             memory.putInt(0, length);
             memory.putInt(Integer.BYTES, (int) checkSum);
             channel.write(memory);
@@ -131,19 +138,18 @@ class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
             channel.position(JournalSegmentDescriptor.BYTES);
 
             memory.clear();
-            memory.flip();
+            int length = 0;
+           /* do {
+                if(memory.remaining() < )
+            } while (length > 0 && length <= maxEntrySize && (index == 0 || nextIndex < index));
+*/
             // Record the current buffer position.
             long position = channel.position();
-
-            if (memory.remaining() < maxEntrySize) {
-                memory.clear();
-                channel.read(memory);
-                channel.position(position);
-                memory.flip();
-
-            }
+            channel.read(memory);
+            channel.position(position);
+            memory.flip();
             memory.mark();
-            int length = memory.getInt();
+            length = memory.getInt();
 
             while (length > 0 && length <= maxEntrySize && (index == 0 || nextIndex < index)) {
                 long checkSum = ((long) memory.getInt()) & 0xFFFFFFFFL;
@@ -165,9 +171,11 @@ class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
 
                 // Read more bytes from the segment if necessary.
                 if (memory.remaining() < maxEntrySize) {
+
                     memory.clear();
                     channel.position(position);
                     channel.read(memory);
+                    channel.position(position);
                     memory.flip();
                 }
                 memory.mark();

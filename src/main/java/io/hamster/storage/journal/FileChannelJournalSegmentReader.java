@@ -41,17 +41,17 @@ public class FileChannelJournalSegmentReader<E> implements JournalReader<E> {
 
     @Override
     public long getFirstIndex() {
-        return 0;
+        return this.firstIndex;
     }
 
     @Override
     public long getCurrentIndex() {
-        return 0;
+        return currentEntry != null ? currentEntry.index() : firstIndex;
     }
 
     @Override
     public Indexed<E> getCurrentEntry() {
-        return null;
+        return currentEntry;
     }
 
     @Override
@@ -99,6 +99,7 @@ public class FileChannelJournalSegmentReader<E> implements JournalReader<E> {
 
     @Override
     public void reset(long index) {
+        long currentIndex = getCurrentIndex();
 
     }
 

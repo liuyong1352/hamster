@@ -5,6 +5,7 @@ import io.hamster.storage.journal.index.JournalIndex;
 
 import java.io.IOException;
 import java.nio.BufferOverflowException;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.zip.CRC32;
@@ -142,20 +143,16 @@ class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
         long nextIndex = firstIndex;
         try {
             channel.position(JournalSegmentDescriptor.BYTES);
-
             memory.clear();
-            int length = 0;
-           /* do {
-                if(memory.remaining() < )
-            } while (length > 0 && length <= maxEntrySize && (index == 0 || nextIndex < index));
-*/
+
             // Record the current buffer position.
             long position = channel.position();
             channel.read(memory);
             channel.position(position);
             memory.flip();
+
             memory.mark();
-            length = memory.getInt();
+            int length = memory.getInt();
 
             while (length > 0 && length <= maxEntrySize && (index == 0 || nextIndex <= index)) {
                 long checkSum = ((long) memory.getInt()) & 0xFFFFFFFFL;
@@ -168,7 +165,7 @@ class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
                     Indexed<E> indexedEntry = new Indexed<>(nextIndex, entry, length);
                     memory.limit(limit);
                     this.lastEntry = indexedEntry;
-                    this.index.index(index,(int)position);
+                    this.index.index(index, (int) position);
                     nextIndex++;
                 } else {
                     break;
@@ -190,9 +187,14 @@ class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
                 length = memory.getInt();
             }
 
-            //channel.position(position);
             // Reset the buffer to the previous mark.
             channel.position(channel.position() + memory.reset().position());
+        } catch (BufferUnderflowException fe) {
+            try {
+                channel.position(channel.position() + memory.reset().position());
+            } catch (IOException e) {
+                throw new StorageException(e);
+            }
         } catch (IOException e) {
             throw new StorageException(e);
         }

@@ -20,8 +20,17 @@ public class Test {
         SegmentedJournal<RaftLogEntry> segmentedJournal = new SegmentedJournal<>("test",
                 StorageLevel.MAPPED,
                 new File(System.getProperty("user.dir")),
-                new RaftLogCodec(), 1024,
-                8);
+                new RaftLogCodec(),
+                0.2,
+                1024,
+                64);
+
+        Journal<TestEntry> journal = SegmentedJournal.<TestEntry>builder()
+                .withIndexDensity(0.2)
+                .withMaxEntrySize(64)
+                .withMaxSegmentSize(1024)
+                .build();
+
 
 
         SegmentedJournalWriter<RaftLogEntry> writer1 = segmentedJournal.writer();

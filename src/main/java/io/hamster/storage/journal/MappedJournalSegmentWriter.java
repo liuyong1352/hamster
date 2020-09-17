@@ -74,7 +74,7 @@ public class MappedJournalSegmentWriter<E> implements JournalWriter<E> {
     }
 
     @Override
-    public void close() throws Exception {
+    public void close() {
 
     }
 }

@@ -1,11 +1,15 @@
 package io.hamster.storage.journal;
 
+import com.google.common.collect.Sets;
 import io.hamster.storage.StorageException;
+import io.hamster.storage.journal.index.JournalIndex;
+import io.hamster.storage.journal.index.SparseJournalIndex;
 
 import java.io.IOException;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.google.common.base.Preconditions.checkState;
@@ -15,9 +19,11 @@ public class JournalSegment<E> implements AutoCloseable {
     private final JournalSegmentFile file;
     private final JournalSegmentDescriptor descriptor;
     private final JournalCodec<E> codec;
+    private final JournalIndex index;
 
 
     private final MappableJournalSegmentWriter<E> writer;
+    private final Set<MappableJournalSegmentReader<E>> readers = Sets.newConcurrentHashSet();
     private final AtomicInteger references = new AtomicInteger();
     private final int maxEntrySize;
     private boolean open = true;
@@ -26,19 +32,22 @@ public class JournalSegment<E> implements AutoCloseable {
             JournalSegmentFile file,
             JournalSegmentDescriptor descriptor,
             JournalCodec<E> codec,
+            double indexDensity,
             int maxEntrySize
     ) {
         this.file = file;
         this.descriptor = descriptor;
         this.codec = codec;
         this.maxEntrySize = maxEntrySize;
-        this.writer = new MappableJournalSegmentWriter<>(openChannel(), this, codec, maxEntrySize);
+        this.index = new SparseJournalIndex(indexDensity);
+        this.writer = new MappableJournalSegmentWriter<>(openChannel(), this, codec, this.index, maxEntrySize);
     }
 
     @Override
     public void close() {
-        this.writer.close();
-        this.open = false;
+        writer.close();
+        readers.forEach(reader -> reader.close());
+        open = false;
     }
 
     /**
@@ -59,19 +68,29 @@ public class JournalSegment<E> implements AutoCloseable {
     MappableJournalSegmentReader<E> createReader() {
         checkOpen();
         MappableJournalSegmentReader reader = new MappableJournalSegmentReader(openChannel(), this,
-                maxEntrySize, null, codec);
+                codec, this.index, maxEntrySize);
         MappedByteBuffer buffer = writer.buffer();
         if (buffer != null) {
             //reader.map(buffer);
         }
+        readers.add(reader);
         return reader;
+    }
+
+    /**
+     * Closes a segment reader.
+     *
+     * @param reader the closed segment reader
+     */
+    void closeReader(MappableJournalSegmentReader<E> reader) {
+        readers.remove(reader);
     }
 
     /**
      * Acquires a reference to the log segment.
      */
     void acquire() {
-        if(references.getAndIncrement() == 0 && open){
+        if (references.getAndIncrement() == 0 && open) {
             //map();
         }
     }

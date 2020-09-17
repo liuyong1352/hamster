@@ -15,12 +15,12 @@ public class SegmentedJournalWriter<E> implements JournalWriter<E> {
 
     @Override
     public long getLastIndex() {
-        return 0;
+        return currentWriter.getLastIndex();
     }
 
     @Override
     public Indexed<E> getLastEntry() {
-        return null;
+        return currentWriter.getLastEntry();
     }
 
     @Override
@@ -40,17 +40,17 @@ public class SegmentedJournalWriter<E> implements JournalWriter<E> {
 
     @Override
     public void commit(long index) {
-
+        currentWriter.commit(index);
     }
 
     @Override
     public void reset(long index) {
-
+        currentWriter.reset(index);
     }
 
     @Override
     public void truncate(long index) {
-
+        currentWriter.truncate(index);
     }
 
     @Override
@@ -60,6 +60,6 @@ public class SegmentedJournalWriter<E> implements JournalWriter<E> {
 
     @Override
     public void close(){
-
+        currentWriter.close();
     }
 }

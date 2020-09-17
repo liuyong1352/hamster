@@ -82,4 +82,10 @@ public interface JournalWriter<E> extends AutoCloseable {
      * Flushes written entries to disk.
      */
     void flush();
+
+    /**
+     * Close
+     */
+    @Override
+    void close();
 }

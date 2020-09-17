@@ -1,7 +1,9 @@
 package io.hamster.storage.journal;
 
+import io.hamster.storage.StorageException;
 import io.hamster.storage.journal.index.JournalIndex;
 
+import java.io.IOException;
 import java.nio.channels.FileChannel;
 
 /**
@@ -19,9 +21,9 @@ class MappableJournalSegmentReader<E> implements JournalReader<E> {
     MappableJournalSegmentReader(
             FileChannel channel,
             JournalSegment<E> segment,
-            int maxEntrySize,
+            JournalCodec<E> codec,
             JournalIndex index,
-            JournalCodec<E> codec) {
+            int maxEntrySize) {
         this.channel = channel;
         this.segment = segment;
         this.maxEntrySize = maxEntrySize;
@@ -73,5 +75,12 @@ class MappableJournalSegmentReader<E> implements JournalReader<E> {
     @Override
     public void close() {
         reader.close();
+        try {
+            channel.close();
+        } catch (IOException e) {
+            throw new StorageException(e);
+        } finally {
+            segment.closeReader(this);
+        }
     }
 }

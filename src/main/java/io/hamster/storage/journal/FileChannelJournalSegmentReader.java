@@ -2,6 +2,7 @@ package io.hamster.storage.journal;
 
 import io.hamster.storage.StorageException;
 import io.hamster.storage.journal.index.JournalIndex;
+import io.hamster.storage.journal.index.Position;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -99,8 +100,21 @@ public class FileChannelJournalSegmentReader<E> implements JournalReader<E> {
 
     @Override
     public void reset(long index) {
-        long currentIndex = getCurrentIndex();
+        reset();
 
+        Position position = this.index.lookup(index - 1);
+        if (position != null) {
+            currentEntry = new Indexed<>(position.index(), null, 0);
+            try {
+                channel.position(position.position());
+            } catch (IOException e) {
+                throw new StorageException(e);
+            }
+            readNext();
+        }
+        while (getNextIndex() < index && hasNext()) {
+            next();
+        }
     }
 
     /**

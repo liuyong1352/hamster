@@ -52,7 +52,7 @@ class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
 
     @Override
     public long getLastIndex() {
-        return lastEntry != null ? lastEntry.index() : firstIndex - 1;
+        return lastEntry != null ? lastEntry.index() : segment.index() - 1;
     }
 
     @Override
@@ -93,6 +93,11 @@ class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
                 throw new BufferOverflowException();
             }
 
+            // If the entry length exceeds the maximum entry size then throw an exception.
+            if (length > maxEntrySize) {
+                throw new StorageException.TooLarge("Entry size " + length + " exceeds maximum allowed bytes (" + maxEntrySize + ")");
+            }
+
             final CRC32 crc32 = new CRC32();
             crc32.update(memory.array(), Integer.BYTES + Integer.BYTES, length);
             final long checkSum = crc32.getValue();
@@ -103,6 +108,7 @@ class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
 
             // Update the last entry with the correct index/term/length.
             Indexed<E> indexedEntry = new Indexed<>(index, entry, length);
+            this.index.index(index, (int) position);
             this.lastEntry = indexedEntry;
             return (Indexed<T>) indexedEntry;
         } catch (IOException e) {
@@ -151,7 +157,7 @@ class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
             memory.mark();
             length = memory.getInt();
 
-            while (length > 0 && length <= maxEntrySize && (index == 0 || nextIndex < index)) {
+            while (length > 0 && length <= maxEntrySize && (index == 0 || nextIndex <= index)) {
                 long checkSum = ((long) memory.getInt()) & 0xFFFFFFFFL;
                 final CRC32 crc32 = new CRC32();
                 crc32.update(memory.array(), memory.position(), length);
@@ -162,6 +168,7 @@ class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
                     Indexed<E> indexedEntry = new Indexed<>(nextIndex, entry, length);
                     memory.limit(limit);
                     this.lastEntry = indexedEntry;
+                    this.index.index(index,(int)position);
                     nextIndex++;
                 } else {
                     break;
@@ -182,8 +189,9 @@ class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
                 length = memory.getInt();
             }
 
-            channel.position(position);
-
+            //channel.position(position);
+            // Reset the buffer to the previous mark.
+            channel.position(channel.position() + memory.reset().position());
         } catch (IOException e) {
             throw new StorageException(e);
         }
@@ -192,16 +200,55 @@ class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
 
     @Override
     public void truncate(long index) {
+        // If the index is greater than or equal to the last index, skip the truncate.
+        if (index >= getLastIndex()) {
+            return;
+        }
+        // Reset the last entry.
+        lastEntry = null;
+        // Truncate the index.
+        this.index.truncate(index);
+        try {
+            if (index < segment.index()) {
+                channel.position(JournalSegmentDescriptor.BYTES);
+                channel.write(zero());
+                channel.position(JournalSegmentDescriptor.BYTES);
+            } else {
+                reset(index);
+                // Zero entries after the given index.
+                long position = channel.position();
+                channel.write(zero());
+                channel.position(position);
+            }
+        } catch (IOException e) {
+            throw new StorageException(e);
+        }
+    }
 
+    /**
+     * Returns a zeroed out byte buffer.
+     */
+    private ByteBuffer zero() {
+        memory.clear();
+        for (int i = 0; i < memory.limit(); i++) {
+            memory.put(i, (byte) 0);
+        }
+        return memory;
     }
 
     @Override
     public void flush() {
-
+        try {
+            if (channel.isOpen()) {
+                channel.force(true);
+            }
+        } catch (IOException e) {
+            throw new StorageException(e);
+        }
     }
 
     @Override
-    public void close() throws Exception {
-
+    public void close() {
+        flush();
     }
 }

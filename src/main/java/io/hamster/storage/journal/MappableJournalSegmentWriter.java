@@ -1,11 +1,15 @@
 package io.hamster.storage.journal;
 
+import io.hamster.storage.StorageException;
+import io.hamster.storage.journal.index.JournalIndex;
+
+import java.io.IOException;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 
 public class MappableJournalSegmentWriter<E> implements JournalWriter<E> {
 
-    private final FileChannel fileChannel;
+    private final FileChannel channel;
     private final JournalSegment<E> journalSegment;
     private final JournalCodec<E> codec;
 
@@ -13,15 +17,16 @@ public class MappableJournalSegmentWriter<E> implements JournalWriter<E> {
     private int maxEntrySize;
 
 
-    public MappableJournalSegmentWriter(FileChannel fileChannel,
+    public MappableJournalSegmentWriter(FileChannel channel,
                                         JournalSegment<E> journalSegment,
                                         JournalCodec<E> codec,
+                                        JournalIndex index,
                                         int maxEntrySize
-                                        ) {
-        this.fileChannel = fileChannel;
+    ) {
+        this.channel = channel;
         this.journalSegment = journalSegment;
         this.codec = codec;
-        this.writer = new FileChannelJournalSegmentWriter<>(fileChannel, journalSegment, codec, maxEntrySize, null);
+        this.writer = new FileChannelJournalSegmentWriter<>(channel, journalSegment, codec, maxEntrySize, index);
     }
 
     MappedByteBuffer buffer() {
@@ -34,13 +39,12 @@ public class MappableJournalSegmentWriter<E> implements JournalWriter<E> {
 
     @Override
     public long getLastIndex() {
-
-        return 0;
+        return writer.getLastIndex();
     }
 
     @Override
     public Indexed<E> getLastEntry() {
-        return null;
+        return writer.getLastEntry();
     }
 
     @Override
@@ -50,27 +54,27 @@ public class MappableJournalSegmentWriter<E> implements JournalWriter<E> {
 
     @Override
     public <T extends E> Indexed<T> append(T entry) {
-        return null;
+        return writer.append(entry);
     }
 
     @Override
     public void commit(long index) {
-
+        writer.commit(index);
     }
 
     @Override
     public void reset(long index) {
-
+        writer.reset(index);
     }
 
     @Override
     public void truncate(long index) {
-
+        writer.truncate(index);
     }
 
     @Override
     public void flush() {
-
+        writer.flush();
     }
 
     @Override
@@ -80,6 +84,11 @@ public class MappableJournalSegmentWriter<E> implements JournalWriter<E> {
 
     @Override
     public void close() {
-
+        writer.close();
+        try {
+            channel.close();
+        } catch (IOException e) {
+            throw new StorageException(e);
+        }
     }
 }

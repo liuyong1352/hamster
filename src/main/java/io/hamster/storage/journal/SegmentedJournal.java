@@ -18,10 +18,18 @@ import java.util.NavigableMap;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
+import static com.google.common.base.Preconditions.*;
 
 public class SegmentedJournal<E> implements Journal<E> {
+
+    /**
+     * Returns a new Raft log builder.
+     *
+     * @return A new Raft log builder.
+     */
+    public static <E> Builder<E> builder() {
+        return new Builder<>();
+    }
 
     private final Logger log = LoggerFactory.getLogger(getClass());
 
@@ -34,6 +42,7 @@ public class SegmentedJournal<E> implements Journal<E> {
 
     private final int maxEntrySize;
     private final int maxSegmentSize;
+    private final double indexDensity;
     private JournalSegment<E> currentSegment;
     private final SegmentedJournalWriter<E> writer;
     private final Collection<SegmentedJournalReader> readers = Sets.newConcurrentHashSet();
@@ -46,6 +55,7 @@ public class SegmentedJournal<E> implements Journal<E> {
             StorageLevel storageLevel,
             File directory,
             JournalCodec<E> codec,
+            double indexDensity,
             int maxSegmentSize,
             int maxEntrySize) {
         this.name = name;
@@ -53,6 +63,7 @@ public class SegmentedJournal<E> implements Journal<E> {
         this.directory = directory;
 
         this.codec = codec;
+        this.indexDensity = indexDensity;
         this.maxSegmentSize = maxSegmentSize;
         this.maxEntrySize = maxEntrySize;
         open();
@@ -119,7 +130,7 @@ public class SegmentedJournal<E> implements Journal<E> {
     }
 
     private JournalSegment<E> newSegment(JournalSegmentFile journalSegmentFile, JournalSegmentDescriptor descriptor) {
-        return new JournalSegment<>(journalSegmentFile, descriptor, codec, maxEntrySize);
+        return new JournalSegment<>(journalSegmentFile, descriptor, codec, indexDensity, maxEntrySize);
     }
 
     /**
@@ -176,7 +187,7 @@ public class SegmentedJournal<E> implements Journal<E> {
         }
         // If the index is in another segment, get the entry with the next lowest first index.
         Map.Entry<Long, JournalSegment<E>> segment = segments.floorEntry(index);
-        if(segment != null){
+        if (segment != null) {
             return segment.getValue();
         }
         return getFirstSegment();
@@ -276,10 +287,186 @@ public class SegmentedJournal<E> implements Journal<E> {
 
     @Override
     public void close() {
-        segments.values().forEach(journalSegment -> {
-            journalSegment.close();
+        segments.values().forEach(segment -> {
+            log.debug("Closing segment: {}", segment);
+            segment.close();
         });
-        writer.close();
-        this.open = false;
+        currentSegment = null;
+        open = false;
     }
+
+    public static class Builder<E> implements io.hamster.utils.Builder<SegmentedJournal<E>> {
+
+        private static final boolean DEFAULT_FLUSH_ON_COMMIT = false;
+        private static final String DEFAULT_NAME = "hamster";
+        private static final String DEFAULT_DIRECTORY = System.getProperty("user.dir");
+        private static final int DEFAULT_MAX_SEGMENT_SIZE = 1024 * 1024 * 32;
+        private static final int DEFAULT_MAX_ENTRY_SIZE = 1024 * 1024;
+        private static final double DEFAULT_INDEX_DENSITY = .005;
+
+        private String name = DEFAULT_NAME;
+        private StorageLevel storageLevel = StorageLevel.DISK;
+        private File directory = new File(DEFAULT_DIRECTORY);
+        private JournalCodec<E> codec;
+        private double indexDensity = DEFAULT_INDEX_DENSITY;
+        private int maxEntrySize = DEFAULT_MAX_ENTRY_SIZE;
+        private int maxSegmentSize = DEFAULT_MAX_SEGMENT_SIZE;
+        private boolean flushOnCommit = DEFAULT_FLUSH_ON_COMMIT;
+
+        protected Builder(){
+
+        }
+
+        /**
+         * Sets the storage name.
+         *
+         * @param name The storage name.
+         * @return The storage builder.
+         */
+        public Builder<E> withName(String name) {
+            this.name = checkNotNull(name, "name cannot be null");
+            return this;
+        }
+
+        /**
+         * Sets the log storage level, returning the builder for method chaining.
+         * <p>
+         * The storage level indicates how individual entries should be persisted in the journal.
+         *
+         * @param storageLevel The log storage level.
+         * @return The storage builder.
+         */
+        public Builder<E> withStorageLevel(StorageLevel storageLevel) {
+            this.storageLevel = checkNotNull(storageLevel, "storageLevel cannot be null");
+            return this;
+        }
+
+        /**
+         * Sets the log directory, returning the builder for method chaining.
+         * <p>
+         * The log will write segment files into the provided directory.
+         *
+         * @param directory The log directory.
+         * @return The storage builder.
+         * @throws NullPointerException If the {@code directory} is {@code null}
+         */
+        public Builder<E> withDirectory(String directory) {
+            return withDirectory(new File(checkNotNull(directory, "directory cannot be null")));
+        }
+
+        /**
+         * Sets the log directory, returning the builder for method chaining.
+         * <p>
+         * The log will write segment files into the provided directory.
+         *
+         * @param directory The log directory.
+         * @return The storage builder.
+         * @throws NullPointerException If the {@code directory} is {@code null}
+         */
+        public Builder<E> withDirectory(File directory) {
+            this.directory = checkNotNull(directory, "directory cannot be null");
+            return this;
+        }
+
+        /**
+         * Sets the journal codec, returning the builder for method chaining.
+         *
+         * @param codec The journal codec.
+         * @return The journal builder.
+         */
+        public Builder<E> withCodec(JournalCodec<E> codec) {
+            this.codec = checkNotNull(codec, "codec cannot be null");
+            return this;
+        }
+
+        /**
+         * Sets the maximum segment size in bytes, returning the builder for method chaining.
+         * <p>
+         * The maximum segment size dictates when logs should roll over to new segments. As entries are written to a segment
+         * of the log, once the size of the segment surpasses the configured maximum segment size, the log will create a new
+         * segment and append new entries to that segment.
+         * <p>
+         * By default, the maximum segment size is {@code 1024 * 1024 * 32}.
+         *
+         * @param maxSegmentSize The maximum segment size in bytes.
+         * @return The storage builder.
+         * @throws IllegalArgumentException If the {@code maxSegmentSize} is not positive
+         */
+        public Builder<E> withMaxSegmentSize(int maxSegmentSize) {
+            checkArgument(maxSegmentSize > JournalSegmentDescriptor.BYTES, "maxSegmentSize must be greater than " + JournalSegmentDescriptor.BYTES);
+            this.maxSegmentSize = maxSegmentSize;
+            return this;
+        }
+
+        /**
+         * Sets the maximum entry size in bytes, returning the builder for method chaining.
+         *
+         * @param maxEntrySize the maximum entry size in bytes
+         * @return the storage builder
+         * @throws IllegalArgumentException if the {@code maxEntrySize} is not positive
+         */
+        public Builder<E> withMaxEntrySize(int maxEntrySize) {
+            checkArgument(maxEntrySize > 0, "maxEntrySize must be positive");
+            this.maxEntrySize = maxEntrySize;
+            return this;
+        }
+
+        /**
+         * Sets the journal index density.
+         * <p>
+         * The index density is the frequency at which the position of entries written to the journal will be recorded in an
+         * in-memory index for faster seeking.
+         *
+         * @param indexDensity the index density
+         * @return the journal builder
+         * @throws IllegalArgumentException if the density is not between 0 and 1
+         */
+        public Builder<E> withIndexDensity(double indexDensity) {
+            checkArgument(indexDensity > 0 && indexDensity < 1, "index density must be between 0 and 1");
+            this.indexDensity = indexDensity;
+            return this;
+        }
+
+        /**
+         * Enables flushing buffers to disk when entries are committed to a segment, returning the builder for method
+         * chaining.
+         * <p>
+         * When flush-on-commit is enabled, log entry buffers will be automatically flushed to disk each time an entry is
+         * committed in a given segment.
+         *
+         * @return The storage builder.
+         */
+        public Builder<E> withFlushOnCommit() {
+            return withFlushOnCommit(true);
+        }
+
+        /**
+         * Sets whether to flush buffers to disk when entries are committed to a segment, returning the builder for method
+         * chaining.
+         * <p>
+         * When flush-on-commit is enabled, log entry buffers will be automatically flushed to disk each time an entry is
+         * committed in a given segment.
+         *
+         * @param flushOnCommit Whether to flush buffers to disk when entries are committed to a segment.
+         * @return The storage builder.
+         */
+        public Builder<E> withFlushOnCommit(boolean flushOnCommit) {
+            this.flushOnCommit = flushOnCommit;
+            return this;
+        }
+
+
+        @Override
+        public SegmentedJournal<E> build() {
+            return new SegmentedJournal<>(name,
+                    storageLevel,
+                    directory,
+                    codec,
+                    indexDensity,
+                    maxSegmentSize,
+                    maxEntrySize
+            );
+        }
+    }
+
 }

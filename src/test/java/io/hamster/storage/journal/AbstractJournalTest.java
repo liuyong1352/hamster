@@ -7,7 +7,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import java.io.*;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -16,35 +16,11 @@ import java.util.Collection;
 import java.util.List;
 
 import static org.junit.Assert.*;
-import static org.junit.Assert.assertTrue;
 
 @RunWith(Parameterized.class)
 public abstract class AbstractJournalTest {
 
-    private static final JournalCodec<TestEntry> CODEC = new JournalCodec<TestEntry>() {
-        @Override
-        public void encode(TestEntry entry, ByteBuffer buffer) throws IOException {
-            ByteArrayOutputStream bos = new ByteArrayOutputStream();
-            ObjectOutputStream oos = new ObjectOutputStream(bos);
-            oos.writeObject(entry);
-            byte[] bytes = bos.toByteArray();
-            buffer.putInt(bytes.length);
-            buffer.put(bytes);
-        }
-
-        @Override
-        public TestEntry decode(ByteBuffer buffer) throws IOException {
-            try {
-                byte[] bytes = new byte[buffer.getInt()];
-                buffer.get(bytes);
-                ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
-                ObjectInputStream ois = new ObjectInputStream(bis);
-                return (TestEntry) ois.readObject();
-            } catch (ClassNotFoundException e) {
-                throw new IOException(e);
-            }
-        }
-    };
+    private static final JournalCodec<TestEntry> CODEC = new TestEntryCodec();
 
     protected static final TestEntry ENTRY = new TestEntry(32);
     private static final Path PATH = Paths.get("target/test-logs/");
@@ -58,7 +34,7 @@ public abstract class AbstractJournalTest {
         CODEC.encode(ENTRY, buffer);
         buffer.flip();
         int entryLength = (buffer.remaining() + 8);
-        this.maxEntryPerSegment = (maxSegmentSize - JournalSegmentDescriptor.BYTES) /entryLength;
+        this.maxEntryPerSegment = (maxSegmentSize - JournalSegmentDescriptor.BYTES) / entryLength;
     }
 
     protected abstract StorageLevel storageLevel();

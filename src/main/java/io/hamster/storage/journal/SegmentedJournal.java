@@ -204,6 +204,27 @@ public class SegmentedJournal<E> implements Journal<E> {
         return nextSegment != null ? nextSegment.getValue() : null;
     }
 
+    /**
+     * Creates and returns the next segment.
+     *
+     * @return The next segment.
+     * @throws IllegalStateException if the segment manager is not open
+     */
+    synchronized JournalSegment<E> getNextSegment() {
+        assertOpen();
+        JournalSegment lastSegment = getLastSegment();
+        JournalSegmentDescriptor descriptor = JournalSegmentDescriptor.builder()
+                .withId(lastSegment != null ? lastSegment.descriptor().id() + 1 : 1)
+                .withIndex(currentSegment.lastIndex() + 1)
+                .withMaxSegmentSize(maxSegmentSize)
+                .build();
+
+        currentSegment = createSegment(descriptor);
+
+        segments.put(descriptor.index(), currentSegment);
+        return currentSegment;
+    }
+
 
     /**
      * Returns the first segment in the log.
@@ -313,7 +334,7 @@ public class SegmentedJournal<E> implements Journal<E> {
         private int maxSegmentSize = DEFAULT_MAX_SEGMENT_SIZE;
         private boolean flushOnCommit = DEFAULT_FLUSH_ON_COMMIT;
 
-        protected Builder(){
+        protected Builder() {
 
         }
 

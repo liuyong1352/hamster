@@ -1,43 +1,37 @@
 package io.hamster.storage.journal;
 
-import com.google.protobuf.ByteString;
-import io.hamster.protocols.raft.storage.log.QueryEntry;
-import io.hamster.protocols.raft.storage.log.RaftLogCodec;
-import io.hamster.protocols.raft.storage.log.RaftLogEntry;
-import io.hamster.storage.StorageLevel;
-
-import java.io.File;
 import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
 
 public class Test {
 
 
     @org.junit.Test
-    public void t() {
+    public void t() throws Exception {
 
+        TestEntry testEntry = new TestEntry(1024 - 64 - 8 - 4);
+        TestEntryCodec codec = new TestEntryCodec();
+        ByteBuffer buffer = ByteBuffer.allocate(1024);
+        codec.encode(testEntry, buffer);
 
-        SegmentedJournal<RaftLogEntry> segmentedJournal = new SegmentedJournal<>("test",
-                StorageLevel.MAPPED,
-                new File(System.getProperty("user.dir")),
-                new RaftLogCodec(),
-                0.2,
-                1024,
-                64);
+        int len = buffer.position() + 8;
 
         Journal<TestEntry> journal = SegmentedJournal.<TestEntry>builder()
                 .withIndexDensity(0.2)
-                .withMaxEntrySize(64)
+                .withMaxEntrySize(1024)
                 .withMaxSegmentSize(1024)
+                .withCodec(new TestEntryCodec())
                 .build();
 
 
+        JournalWriter<TestEntry> writer1 = journal.writer();
+        JournalReader<TestEntry> reader = journal.openReader(1);
 
-        SegmentedJournalWriter<RaftLogEntry> writer1 = segmentedJournal.writer();
-        SegmentedJournalReader<RaftLogEntry> reader = segmentedJournal.openReader(1);
+        writer1.append(testEntry);
+
+        System.out.println(writer1.getNextIndex());
 
 
-        int n = 5 ;
+        /*int n = 5 ;
         for(int i=0;i<n ;i++){
             long next = writer1.getNextIndex();
 
@@ -58,7 +52,7 @@ public class Test {
             Indexed<RaftLogEntry> indexed1 = reader.next();
             System.out.println(indexed1.entry().getQuery().getValue().toString(Charset.defaultCharset()));
             System.out.println(indexed1);
-        }
+        }*/
     }
 
 }

@@ -186,6 +186,7 @@ class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
                     memory.flip();
                 }
                 memory.mark();
+
                 length = memory.getInt();
             }
 

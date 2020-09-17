@@ -1,5 +1,7 @@
 package io.hamster.storage.journal;
 
+import java.nio.BufferOverflowException;
+
 public class SegmentedJournalWriter<E> implements JournalWriter<E> {
 
     private final SegmentedJournal<E> journal;
@@ -30,12 +32,38 @@ public class SegmentedJournalWriter<E> implements JournalWriter<E> {
 
     @Override
     public <T extends E> Indexed<T> append(T entry) {
-        return currentWriter.append(entry);
+        try {
+            return currentWriter.append(entry);
+        } catch (BufferOverflowException e) {
+            //First entry can not write , the entry size is too large
+            if (currentSegment.index() == currentWriter.getNextIndex()) {
+                throw e;
+            }
+            currentWriter.flush();
+            currentSegment.release();
+            currentSegment = journal.getNextSegment();
+            currentSegment.acquire();
+            currentWriter = currentSegment.writer();
+            return currentWriter.append(entry);
+        }
     }
 
     @Override
     public void append(Indexed<E> entry) {
-        currentWriter.append(entry);
+        try {
+            currentWriter.append(entry);
+        } catch (BufferOverflowException e) {
+            //First entry can not write , the entry size is too large
+            if (currentSegment.index() == currentWriter.getNextIndex()) {
+                throw e;
+            }
+            currentWriter.flush();
+            currentSegment.release();
+            currentSegment = journal.getNextSegment();
+            currentSegment.acquire();
+            currentWriter = currentSegment.writer();
+            currentWriter.append(entry);
+        }
     }
 
     @Override
@@ -59,7 +87,7 @@ public class SegmentedJournalWriter<E> implements JournalWriter<E> {
     }
 
     @Override
-    public void close(){
+    public void close() {
         currentWriter.close();
     }
 }

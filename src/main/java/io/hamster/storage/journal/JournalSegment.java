@@ -33,8 +33,7 @@ public class JournalSegment<E> implements AutoCloseable {
             JournalSegmentDescriptor descriptor,
             JournalCodec<E> codec,
             double indexDensity,
-            int maxEntrySize
-    ) {
+            int maxEntrySize) {
         this.file = file;
         this.descriptor = descriptor;
         this.codec = codec;
@@ -136,6 +135,15 @@ public class JournalSegment<E> implements AutoCloseable {
      */
     private void checkOpen() {
         checkState(open, "Segment not open");
+    }
+
+    /**
+     * Returns the last index in the segment.
+     *
+     * @return The last index in the segment.
+     */
+    public long lastIndex() {
+        return writer.getLastIndex();
     }
 
 

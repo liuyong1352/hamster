@@ -172,7 +172,7 @@ class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
                     Indexed<E> indexedEntry = new Indexed<>(nextIndex, entry, length);
                     memory.limit(limit);
                     this.lastEntry = indexedEntry;
-                    this.index.index(index, (int) position);
+                    this.index.index(nextIndex, (int) position);
                     nextIndex++;
                 } else {
                     break;

@@ -141,13 +141,20 @@ public class SegmentedJournalReader<E> implements JournalReader<E> {
      * Rewinds the journal to the given index.
      */
     private void rewind(long index) {
-        if (index < currentSegment.index()){
-            currentSegment.release();
-            currentSegment = journal.getSegment(index);
-            currentSegment.acquire();
-            currentReader = currentSegment.createReader();
+
+        if (currentSegment.index() >= index) {
+            //Why not use index , but index-1  , because get the previous entry
+            JournalSegment<E> segment = journal.getSegment(index - 1);
+            if (segment != null) {
+                currentReader.close();
+                currentSegment.release();
+                currentSegment = segment;
+                currentSegment.acquire();
+                currentReader = currentSegment.createReader();
+            }
         }
         currentReader.reset(index);
+        previousEntry = currentReader.getCurrentEntry();
     }
 
     @Override

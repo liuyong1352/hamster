@@ -8,7 +8,10 @@ public class Test {
     @org.junit.Test
     public void t() throws Exception {
 
-        TestEntry testEntry = new TestEntry(1024 - 64 - 8 - 4);
+        //size = ((1024-64)/6) - 8 - 4;
+        int size = 148;
+
+        TestEntry testEntry = new TestEntry(148);
         TestEntryCodec codec = new TestEntryCodec();
         ByteBuffer buffer = ByteBuffer.allocate(1024);
         codec.encode(testEntry, buffer);
@@ -23,36 +26,25 @@ public class Test {
                 .build();
 
 
-        JournalWriter<TestEntry> writer1 = journal.writer();
+        /*JournalWriter<TestEntry> writer1 = journal.writer();
+
+        for(int i = 0; i < 18;i++) {
+            Indexed<TestEntry> indexed = writer1.append(testEntry);
+            System.out.println(indexed);
+        }*/
+
         JournalReader<TestEntry> reader = journal.openReader(1);
 
-        writer1.append(testEntry);
-
-        System.out.println(writer1.getNextIndex());
-
-
-        /*int n = 5 ;
-        for(int i=0;i<n ;i++){
-            long next = writer1.getNextIndex();
-
-            RaftLogEntry logEntry = RaftLogEntry.newBuilder()
-                    .setTerm(1)
-                    .setTimestamp(System.currentTimeMillis())
-                    .setQuery(QueryEntry.newBuilder()
-                            .setValue(ByteString.copyFrom("中国" + next, Charset.defaultCharset()))
-                            .build())
-                    .build();
-
-            Indexed<RaftLogEntry> indexed = new Indexed(next, logEntry, logEntry.getSerializedSize());
-            writer1.append(indexed);
+        while (reader.hasNext()) {
+            Indexed<TestEntry> next = reader.next();
             System.out.println(next);
         }
 
-        while (reader.hasNext()){
-            Indexed<RaftLogEntry> indexed1 = reader.next();
-            System.out.println(indexed1.entry().getQuery().getValue().toString(Charset.defaultCharset()));
-            System.out.println(indexed1);
-        }*/
+        reader.reset(7);
+        Indexed<TestEntry> next = reader.next();
+        /*System.out.println(writer1.getNextIndex());*/
+
+
     }
 
 }

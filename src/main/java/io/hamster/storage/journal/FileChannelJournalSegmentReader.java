@@ -5,6 +5,7 @@ import io.hamster.storage.journal.index.JournalIndex;
 import io.hamster.storage.journal.index.Position;
 
 import java.io.IOException;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.NoSuchElementException;
@@ -161,7 +162,9 @@ public class FileChannelJournalSegmentReader<E> implements JournalReader<E> {
                 memory.reset().limit(memory.position());
                 nextEntry = null;
             }
-
+        } catch (BufferUnderflowException e) {
+            memory.reset().limit(memory.position());
+            nextEntry = null;
         } catch (IOException e) {
             throw new StorageException(e);
         }

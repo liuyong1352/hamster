@@ -154,10 +154,17 @@ class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
             memory.mark();
             int length = memory.getInt();
 
+            // If the length is non-zero, read the entry.
             while (length > 0 && length <= maxEntrySize && (index == 0 || nextIndex <= index)) {
+
+                // Read the checksum of the entry.
                 long checkSum = ((long) memory.getInt()) & 0xFFFFFFFFL;
+
+                // Compute the checksum for the entry bytes.
                 final CRC32 crc32 = new CRC32();
                 crc32.update(memory.array(), memory.position(), length);
+
+                // If the stored checksum equals the computed checksum, return the entry.
                 if (checkSum == crc32.getValue()) {
                     int limit = memory.limit();
                     memory.limit(memory.position() + length);

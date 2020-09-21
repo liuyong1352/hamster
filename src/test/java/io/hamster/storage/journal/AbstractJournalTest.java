@@ -47,8 +47,11 @@ public abstract class AbstractJournalTest {
         int entryLength = (buffer.remaining() + 8);
 
         List<Object[]> runs = new ArrayList<>();
-        for (int i = 2; i <= 100; i++) {
-            runs.add(new Object[]{64 + (i * (entryLength + 8))});
+
+        for (int i = 1; i <= 10; i++) {
+            for (int j = 1; j <= 10; j++) {
+                runs.add(new Object[]{64 + (i * (entryLength + 8) + j)});
+            }
         }
         return runs;
     }

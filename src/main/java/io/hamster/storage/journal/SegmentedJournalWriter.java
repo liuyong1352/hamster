@@ -78,7 +78,23 @@ public class SegmentedJournalWriter<E> implements JournalWriter<E> {
 
     @Override
     public void truncate(long index) {
+        if (index < journal.getCommitIndex()) {
+            throw new IndexOutOfBoundsException("Cannot truncate committed index: " + index);
+        }
+
+        while (index < currentSegment.index() && currentSegment != journal.getFirstSegment()) {
+            currentSegment.release();
+            journal.removeSegment(currentSegment);
+            currentSegment = journal.getLastSegment();
+            currentSegment.acquire();
+            currentWriter = currentSegment.writer();
+        }
+
+        // Truncate the current index.
         currentWriter.truncate(index);
+
+        // Reset segment readers.
+        journal.resetTail(index + 1);
     }
 
     @Override

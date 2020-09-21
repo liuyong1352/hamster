@@ -103,11 +103,50 @@ public class SegmentedJournalReader<E> implements JournalReader<E> {
 
     @Override
     public void reset() {
-        currentReader.reset();
+        currentReader.close();
+        currentSegment.release();
+        currentSegment = journal.getFirstSegment();
+        currentSegment.acquire();
+        currentReader = currentSegment.createReader();
+        previousEntry = null;
     }
 
     @Override
     public void reset(long index) {
+
+        // If the current segment is not open, it has been replaced. Reset the segments.
+        if (!currentSegment.isOpen()) {
+            reset();
+        }
+
+        if (index < currentReader.getNextIndex()) {
+            rewind(index);
+        } else if (index > currentReader.getNextIndex()) {
+            forward(index);
+        } else {
+            currentReader.reset(index);
+        }
+    }
+
+    /**
+     * Fast forwards the journal to the given index.
+     */
+    private void forward(long index) {
+        while (index > currentReader.getNextIndex() && hasNext()) {
+            next();
+        }
+    }
+
+    /**
+     * Rewinds the journal to the given index.
+     */
+    private void rewind(long index) {
+        if (index < currentSegment.index()){
+            currentSegment.release();
+            currentSegment = journal.getSegment(index);
+            currentSegment.acquire();
+            currentReader = currentSegment.createReader();
+        }
         currentReader.reset(index);
     }
 

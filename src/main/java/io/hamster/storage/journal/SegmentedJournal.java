@@ -225,6 +225,36 @@ public class SegmentedJournal<E> implements Journal<E> {
         return currentSegment;
     }
 
+    /**
+     * Removes a segment.
+     *
+     * @param segment The segment to remove.
+     */
+    synchronized void removeSegment(JournalSegment segment) {
+        segments.remove(segment.index());
+        segment.close();
+        segment.delete();
+        resetCurrentSegment();
+    }
+
+    /**
+     * Resets the current segment, creating a new segment if necessary.
+     */
+    private synchronized void resetCurrentSegment() {
+        JournalSegment<E> lastSegment = getLastSegment();
+        if (lastSegment != null) {
+            currentSegment = lastSegment;
+        } else {
+            JournalSegmentDescriptor descriptor = JournalSegmentDescriptor.builder()
+                    .withId(1)
+                    .withIndex(1)
+                    .withMaxSegmentSize(maxSegmentSize)
+                    .build();
+
+            currentSegment = createSegment(descriptor);
+            segments.put(1L, currentSegment);
+        }
+    }
 
     /**
      * Returns the first segment in the log.
@@ -235,6 +265,20 @@ public class SegmentedJournal<E> implements Journal<E> {
         assertOpen();
         Map.Entry<Long, JournalSegment<E>> segment = segments.firstEntry();
         return segment != null ? segment.getValue() : null;
+    }
+
+
+    /**
+     * Resets journal readers to the given tail.
+     *
+     * @param index The index at which to reset readers.
+     */
+    void resetTail(long index) {
+        for (SegmentedJournalReader reader : readers) {
+            if (reader.getNextIndex() >= index) {
+                reader.reset(index);
+            }
+        }
     }
 
     void closeReader(SegmentedJournalReader reader) {

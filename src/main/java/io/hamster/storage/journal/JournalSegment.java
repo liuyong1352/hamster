@@ -8,10 +8,12 @@ import io.hamster.storage.journal.index.SparseJournalIndex;
 import java.io.IOException;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Preconditions.checkState;
 
 public class JournalSegment<E> implements AutoCloseable {
@@ -122,6 +124,24 @@ public class JournalSegment<E> implements AutoCloseable {
     }
 
     /**
+     * Returns the segment ID.
+     *
+     * @return The segment ID.
+     */
+    public long id() {
+        return descriptor.id();
+    }
+
+    /**
+     * Returns the segment version.
+     *
+     * @return The segment version.
+     */
+    public long version() {
+        return descriptor.version();
+    }
+
+    /**
      * Returns the segment's starting index.
      *
      * @return The segment's starting index.
@@ -144,6 +164,35 @@ public class JournalSegment<E> implements AutoCloseable {
      */
     public long lastIndex() {
         return writer.getLastIndex();
+    }
+
+    /**
+     * Returns a boolean indicating whether the segment is open.
+     *
+     * @return indicates whether the segment is open
+     */
+    public boolean isOpen() {
+        return open;
+    }
+
+    /**
+     * Deletes the segment.
+     */
+    public void delete(){
+        try {
+            Files.deleteIfExists(file.file().toPath());
+        } catch (IOException e) {
+            throw new StorageException(e);
+        }
+    }
+
+    @Override
+    public String toString() {
+        return toStringHelper(this)
+                .add("id", id())
+                .add("version", version())
+                .add("index", index())
+                .toString();
     }
 
 

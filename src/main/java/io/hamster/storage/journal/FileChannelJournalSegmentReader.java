@@ -105,9 +105,10 @@ public class FileChannelJournalSegmentReader<E> implements JournalReader<E> {
 
         Position position = this.index.lookup(index - 1);
         if (position != null) {
-            currentEntry = new Indexed<>(position.index(), null, 0);
+            currentEntry = new Indexed<>(position.index() - 1, null, 0);
             try {
                 channel.position(position.position());
+                memory.clear().flip();
             } catch (IOException e) {
                 throw new StorageException(e);
             }

@@ -51,13 +51,6 @@ public class MappedJournalSegmentWriter<E> implements JournalWriter<E> {
 
     }
 
-
-
-    @Override
-    public void commit(long index) {
-
-    }
-
     @Override
     public void reset(long index) {
 

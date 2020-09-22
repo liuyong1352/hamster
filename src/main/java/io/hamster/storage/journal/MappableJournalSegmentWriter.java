@@ -58,11 +58,6 @@ public class MappableJournalSegmentWriter<E> implements JournalWriter<E> {
     }
 
     @Override
-    public void commit(long index) {
-        writer.commit(index);
-    }
-
-    @Override
     public void reset(long index) {
         writer.reset(index);
     }

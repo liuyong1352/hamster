@@ -68,12 +68,25 @@ public class SegmentedJournalWriter<E> implements JournalWriter<E> {
 
     @Override
     public void commit(long index) {
-        currentWriter.commit(index);
+        if (index > journal.getCommitIndex()) {
+            journal.setCommitIndex(index);
+            if (journal.isFlushOnCommit()) {
+                flush();
+            }
+        }
     }
 
     @Override
     public void reset(long index) {
-        currentWriter.reset(index);
+        if (index > currentSegment.index()) {
+            currentSegment.release();
+            currentSegment = journal.resetSegments(index);
+            currentSegment.acquire();
+            currentWriter = currentSegment.writer();
+        } else {
+            truncate(index - 1);
+        }
+        journal.resetHead(index);
     }
 
     @Override

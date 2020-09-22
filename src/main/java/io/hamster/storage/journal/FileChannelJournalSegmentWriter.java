@@ -73,7 +73,8 @@ class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
     @Override
     public <T extends E> Indexed<T> append(T entry) {
 
-        long index = getNextIndex();
+        // Store the entry index.
+        final long index = getNextIndex();
 
         memory.clear();
         memory.position(Integer.BYTES + Integer.BYTES);
@@ -131,11 +132,6 @@ class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
         }
 
         append(entry.entry());
-    }
-
-    @Override
-    public void commit(long index) {
-
     }
 
     @Override

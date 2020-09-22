@@ -62,7 +62,7 @@ public interface JournalWriter<E> extends AutoCloseable {
      *
      * @param index The index up to which to commit entries.
      */
-    void commit(long index);
+    default void commit(long index) {}
 
     /**
      * Resets the head of the journal to the given index.

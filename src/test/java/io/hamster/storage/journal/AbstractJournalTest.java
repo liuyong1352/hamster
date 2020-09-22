@@ -26,7 +26,7 @@ public abstract class AbstractJournalTest {
     private static final Path PATH = Paths.get("target/test-logs/");
 
     private final int maxSegmentSize;
-    private final int maxEntryPerSegment;
+    private final int entriesPerSegment;
 
     protected AbstractJournalTest(int maxSegmentSize) throws IOException {
         this.maxSegmentSize = maxSegmentSize;
@@ -34,7 +34,7 @@ public abstract class AbstractJournalTest {
         CODEC.encode(ENTRY, buffer);
         buffer.flip();
         int entryLength = (buffer.remaining() + 8);
-        this.maxEntryPerSegment = (maxSegmentSize - JournalSegmentDescriptor.BYTES) / entryLength;
+        this.entriesPerSegment = (maxSegmentSize - JournalSegmentDescriptor.BYTES) / entryLength;
     }
 
     protected abstract StorageLevel storageLevel();
@@ -212,6 +212,36 @@ public abstract class AbstractJournalTest {
         }
     }
 
+    @Test
+    public void testTruncateRead() throws Exception {
+        int i = 10;
+        try (Journal<TestEntry> journal = createJournal()) {
+            JournalWriter<TestEntry> writer = journal.writer();
+            JournalReader<TestEntry> reader = journal.openReader(1);
+
+            for (int j = 1; j <= i; j++) {
+                assertEquals(j, writer.append(new TestEntry(32)).index());
+            }
+
+            for (int j = 1; j <= i - 2; j++) {
+                assertTrue(reader.hasNext());
+                assertEquals(j, reader.next().index());
+            }
+
+            writer.truncate(i - 2);
+
+            assertFalse(reader.hasNext());
+            assertEquals(i - 1, writer.append(new TestEntry(32)).index());
+            assertEquals(i, writer.append(new TestEntry(32)).index());
+
+            assertTrue(reader.hasNext());
+            Indexed<TestEntry> entry = reader.next();
+            assertEquals(i - 1, entry.index());
+            assertTrue(reader.hasNext());
+            entry = reader.next();
+            assertEquals(i, entry.index());
+        }
+    }
 
     @Test
     @SuppressWarnings("unchecked")
@@ -220,7 +250,7 @@ public abstract class AbstractJournalTest {
             JournalWriter<TestEntry> writer = journal.writer();
             JournalReader<TestEntry> reader = journal.openReader(1);
 
-            for (int i = 1; i <= maxEntryPerSegment; i++) {
+            for (int i = 1; i <= entriesPerSegment; i++) {
                 writer.append(ENTRY);
                 assertTrue(reader.hasNext());
                 Indexed<TestEntry> entry;
@@ -250,6 +280,72 @@ public abstract class AbstractJournalTest {
                 assertEquals(i, entry.index());
                 assertEquals(32, entry.entry().bytes().length);
             }
+        }
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testWriteReadCommittedEntries() throws Exception {
+        try (Journal<TestEntry> journal = createJournal()) {
+            JournalWriter<TestEntry> writer = journal.writer();
+            JournalReader<TestEntry> reader = journal.openReader(1, JournalReader.Mode.COMMITS);
+
+            for (int i = 1; i <= entriesPerSegment * 5; i++) {
+                writer.append(ENTRY);
+                assertFalse(reader.hasNext());
+                writer.commit(i);
+                assertTrue(reader.hasNext());
+                Indexed<TestEntry> entry;
+                entry = (Indexed) reader.next();
+                assertEquals(i, entry.index());
+                assertEquals(32, entry.entry().bytes().length);
+                reader.reset(i);
+                entry = (Indexed) reader.next();
+                assertEquals(i, entry.index());
+                assertEquals(32, entry.entry().bytes().length);
+            }
+        }
+    }
+
+    @Test
+    public void testReadAfterCompact() throws Exception {
+        try (SegmentedJournal<TestEntry> journal = createJournal()) {
+            JournalWriter<TestEntry> writer = journal.writer();
+            JournalReader<TestEntry> uncommittedReader = journal.openReader(1, JournalReader.Mode.ALL);
+            JournalReader<TestEntry> committedReader = journal.openReader(1, JournalReader.Mode.COMMITS);
+
+            for (int i = 1; i <= entriesPerSegment * 10; i++) {
+                assertEquals(i, writer.append(ENTRY).index());
+            }
+
+            assertEquals(1, uncommittedReader.getNextIndex());
+            assertTrue(uncommittedReader.hasNext());
+            assertEquals(1, committedReader.getNextIndex());
+            assertFalse(committedReader.hasNext());
+
+            writer.commit(entriesPerSegment * 9);
+
+            assertTrue(uncommittedReader.hasNext());
+            assertTrue(committedReader.hasNext());
+
+            for (int i = 1; i <= entriesPerSegment * 2.5; i++) {
+                assertEquals(i, uncommittedReader.next().index());
+                assertEquals(i, committedReader.next().index());
+            }
+
+            //journal.compact(entriesPerSegment * 5 + 1);
+
+            assertNull(uncommittedReader.getCurrentEntry());
+            assertEquals(0, uncommittedReader.getCurrentIndex());
+            assertTrue(uncommittedReader.hasNext());
+            assertEquals(entriesPerSegment * 5 + 1, uncommittedReader.getNextIndex());
+            assertEquals(entriesPerSegment * 5 + 1, uncommittedReader.next().index());
+
+            assertNull(committedReader.getCurrentEntry());
+            assertEquals(0, committedReader.getCurrentIndex());
+            assertTrue(committedReader.hasNext());
+            assertEquals(entriesPerSegment * 5 + 1, committedReader.getNextIndex());
+            assertEquals(entriesPerSegment * 5 + 1, committedReader.next().index());
         }
     }
 

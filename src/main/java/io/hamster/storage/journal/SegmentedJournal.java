@@ -43,6 +43,7 @@ public class SegmentedJournal<E> implements Journal<E> {
     private final int maxEntrySize;
     private final int maxSegmentSize;
     private final double indexDensity;
+    private final boolean flushOnCommit;
     private JournalSegment<E> currentSegment;
     private final SegmentedJournalWriter<E> writer;
     private final Collection<SegmentedJournalReader> readers = Sets.newConcurrentHashSet();
@@ -56,6 +57,7 @@ public class SegmentedJournal<E> implements Journal<E> {
             File directory,
             JournalCodec<E> codec,
             double indexDensity,
+            boolean flushOnCommit,
             int maxSegmentSize,
             int maxEntrySize) {
         this.name = name;
@@ -64,6 +66,7 @@ public class SegmentedJournal<E> implements Journal<E> {
 
         this.codec = codec;
         this.indexDensity = indexDensity;
+        this.flushOnCommit = flushOnCommit;
         this.maxSegmentSize = maxSegmentSize;
         this.maxEntrySize = maxEntrySize;
         open();
@@ -149,6 +152,15 @@ public class SegmentedJournal<E> implements Journal<E> {
      */
     long getCommitIndex() {
         return commitIndex;
+    }
+
+    /**
+     * Returns whether {@code flushOnCommit} is enabled for the log.
+     *
+     * @return Indicates whether {@code flushOnCommit} is enabled for the log.
+     */
+    boolean isFlushOnCommit() {
+        return flushOnCommit;
     }
 
     @Override
@@ -281,6 +293,19 @@ public class SegmentedJournal<E> implements Journal<E> {
         }
     }
 
+    /**
+     * Resets journal readers to the given head.
+     *
+     * @param index The index at which to reset readers.
+     */
+    void resetHead(long index) {
+        for (SegmentedJournalReader reader : readers) {
+            if (reader.getNextIndex() < index) {
+                reader.reset(index);
+            }
+        }
+    }
+
     void closeReader(SegmentedJournalReader reader) {
         readers.remove(reader);
     }
@@ -298,6 +323,38 @@ public class SegmentedJournal<E> implements Journal<E> {
     JournalSegment<E> getLastSegment() {
         assertOpen();
         return segments.lastEntry().getValue();
+    }
+
+    /**
+     * Resets and returns the first segment in the journal.
+     *
+     * @param index the starting index of the journal
+     * @return the first segment
+     */
+    JournalSegment<E> resetSegments(long index) {
+        assertOpen();
+
+        // If the index already equals the first segment index, skip the reset.
+        JournalSegment<E> firstSegment = getFirstSegment();
+        if (index == firstSegment.index()) {
+            return firstSegment;
+        }
+
+        for (JournalSegment<E> segment : segments.values()) {
+            segment.close();
+            segment.delete();
+        }
+
+        segments.clear();
+
+        JournalSegmentDescriptor descriptor = JournalSegmentDescriptor.builder()
+                .withId(1)
+                .withIndex(index)
+                .withMaxSegmentSize(maxSegmentSize)
+                .build();
+        currentSegment = createSegment(descriptor);
+        segments.put(index, currentSegment);
+        return currentSegment;
     }
 
     /**
@@ -528,6 +585,7 @@ public class SegmentedJournal<E> implements Journal<E> {
                     directory,
                     codec,
                     indexDensity,
+                    flushOnCommit,
                     maxSegmentSize,
                     maxEntrySize
             );

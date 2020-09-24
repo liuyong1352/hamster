@@ -48,7 +48,7 @@ public class FileChannelJournalSegmentReader<E> implements JournalReader<E> {
 
     @Override
     public long getCurrentIndex() {
-        return currentEntry != null ? currentEntry.index() : firstIndex;
+        return currentEntry != null ? currentEntry.index() : 0;
     }
 
     @Override
@@ -123,8 +123,10 @@ public class FileChannelJournalSegmentReader<E> implements JournalReader<E> {
      * Reads the next entry in the segment.
      */
     private void readNext() {
+        // Compute the index of the next entry in the segment.
         long nextIndex = getNextIndex();
         try {
+            // Read more bytes from the segment if necessary.
             if (memory.remaining() < maxEntrySize) {
                 long position = channel.position() + memory.position();
                 channel.position(position);

@@ -38,12 +38,23 @@ public class SegmentedJournalReader<E> implements JournalReader<E> {
 
     @Override
     public long getCurrentIndex() {
-        return currentReader.getCurrentIndex();
+        long currentIndex = currentReader.getCurrentIndex();
+        if (currentIndex != 0) {
+            return currentIndex;
+        }
+        if (previousEntry != null) {
+            return previousEntry.index();
+        }
+        return 0;
     }
 
     @Override
     public Indexed<E> getCurrentEntry() {
-        return currentReader.getCurrentEntry();
+        Indexed<E> currentEntry = currentReader.getCurrentEntry();
+        if (currentEntry != null) {
+            return currentEntry;
+        }
+        return previousEntry;
     }
 
     @Override

@@ -333,7 +333,7 @@ public abstract class AbstractJournalTest {
                 assertEquals(i, committedReader.next().index());
             }
 
-            //journal.compact(entriesPerSegment * 5 + 1);
+            journal.compact(entriesPerSegment * 5 + 1);
 
             assertNull(uncommittedReader.getCurrentEntry());
             assertEquals(0, uncommittedReader.getCurrentIndex());

@@ -12,10 +12,7 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
-import java.util.Collection;
-import java.util.Map;
-import java.util.NavigableMap;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 import static com.google.common.base.Preconditions.*;
@@ -290,6 +287,29 @@ public class SegmentedJournal<E> implements Journal<E> {
             if (reader.getNextIndex() >= index) {
                 reader.reset(index);
             }
+        }
+    }
+
+    /**
+     * Compacts the journal up to the given index.
+     * <p>
+     * The semantics of compaction are not specified by this interface.
+     *
+     * @param index The index up to which to compact the journal.
+     */
+    public void compact(long index) {
+        Map.Entry<Long, JournalSegment<E>> segmentEntry = segments.floorEntry(index);
+        if (segmentEntry != null) {
+            SortedMap<Long, JournalSegment<E>> compactSegments = segments.headMap(segmentEntry.getValue().index());
+            if (!compactSegments.isEmpty()) {
+                log.debug("{} - Compacting {} segment(s)", name, compactSegments.size());
+                for (JournalSegment<E> segment : compactSegments.values()) {
+                    segment.close();
+                    segment.delete();
+                }
+            }
+            compactSegments.clear();
+            resetHead(segmentEntry.getValue().index());
         }
     }
 

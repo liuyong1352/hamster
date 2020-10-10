@@ -1,6 +1,7 @@
 package io.hamster.protocols.raft.storage;
 
 import io.hamster.protocols.raft.storage.log.RaftLog;
+import io.hamster.protocols.raft.storage.system.MetaStore;
 import io.hamster.storage.StorageException;
 import io.hamster.storage.StorageLevel;
 import io.hamster.storage.journal.JournalSegmentDescriptor;
@@ -214,6 +215,29 @@ public class RaftStorage {
         } catch (IOException e) {
             throw new StorageException("Failed to acquire storage lock");
         }
+    }
+
+    /**
+     * Opens a new {@link MetaStore}, recovering metadata from disk if it exists.
+     * <p>
+     * The meta store will be loaded using based on the configured {@link StorageLevel}. If the storage level is persistent
+     * then the meta store will be loaded from disk, otherwise a new meta store will be created.
+     *
+     * @return The metastore.
+     */
+    public MetaStore openMetaStore() {
+        return new MetaStore(this);
+    }
+
+    /**
+     * Deletes a {@link MetaStore} from disk.
+     * <p>
+     * The meta store will be deleted by simply reading {@code meta} file names from disk and deleting metadata
+     * files directly. Deleting the meta store does not involve reading any metadata files into memory.
+     */
+    public void deleteMetaStore() {
+        deleteFiles(f -> f.getName().equals(String.format("%s.meta", prefix))
+                || f.getName().equals(String.format("%s.conf", prefix)));
     }
 
     /**

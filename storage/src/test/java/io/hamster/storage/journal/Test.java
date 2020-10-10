@@ -1,11 +1,14 @@
 package io.hamster.storage.journal;
 
+import org.junit.Ignore;
+
 import java.nio.ByteBuffer;
 
 public class Test {
 
 
     @org.junit.Test
+    @Ignore
     public void t() throws Exception {
 
         //size = ((1024-64)/6) - 8 - 4;

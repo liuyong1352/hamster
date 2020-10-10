@@ -1,6 +1,5 @@
 package io.hamster.storage.journal;
 
-import java.io.*;
 import java.nio.ByteBuffer;
 
 public class TestEntryCodec implements JournalCodec<TestEntry> {

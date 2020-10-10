@@ -3,7 +3,6 @@ package io.hamster.storage.journal;
 import io.hamster.storage.StorageLevel;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
@@ -14,6 +13,8 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+
+import org.junit.Test;
 
 import static org.junit.Assert.*;
 

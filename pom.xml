@@ -20,11 +20,13 @@
         <grpc.version>1.31.1</grpc.version><!-- CURRENT_GRPC_VERSION -->
         <protobuf.version>3.12.0</protobuf.version>
         <protoc.version>3.12.0</protoc.version>
-        <!-- required for jdk9 -->
+
+        <argparse4j.version>0.7.0</argparse4j.version>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <!-- Logging -->
         <slf4j.version>1.7.7</slf4j.version>
+        <logback.version>1.1.2</logback.version>
         <junit.version>4.12</junit.version>
 
         <!-- Core dependencies -->

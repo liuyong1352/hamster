@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package hamster.protocals.raft;
+package hamster.protocols.raft;
 
 option java_package = "io.hamster.protocols.raft.storage.log";
 option java_outer_classname = "RaftProtocolProto";
